@@ -1,0 +1,6 @@
+{
+  "name": "Smart Worker",
+  "description": "Workforce Management Simplified",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
