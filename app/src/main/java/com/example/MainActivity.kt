@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,22 +19,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Engineering
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Button
@@ -41,6 +38,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +50,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -61,6 +62,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.screens.VerifyOtpScreen
+import com.example.screens.HomeScreen
 import com.example.ui.theme.*
 
 class MainActivity : ComponentActivity() {
@@ -79,44 +82,143 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation() {
     var currentScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("login") }
     var phoneNumber by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
+    
+    val isBottomNavVisible = currentScreen in listOf("home", "workers", "attendance", "payroll", "more")
 
-    androidx.compose.animation.Crossfade(targetState = currentScreen) { screen ->
-        when (screen) {
-            "login" -> LoginScreen(onSendOtp = {
-                phoneNumber = it
-                currentScreen = "verify_otp"
-            })
-            "verify_otp" -> com.example.screens.VerifyOtpScreen(
-                phoneNumber = phoneNumber,
-                onBack = { currentScreen = "login" },
-                onVerify = {
-                    currentScreen = "home"
+    androidx.compose.material3.Scaffold(
+        bottomBar = {
+            if (isBottomNavVisible) {
+                UnifiedBottomNavBar(currentScreen) { currentScreen = it }
+            }
+        },
+        floatingActionButton = {
+            if (isBottomNavVisible) {
+                androidx.compose.material3.FloatingActionButton(
+                    onClick = {},
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    containerColor = androidx.compose.ui.graphics.Color(0xFF0D5BFF),
+                    contentColor = androidx.compose.ui.graphics.Color.White,
+                    modifier = Modifier.size(56.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Default.Add, 
+                        contentDescription = "Add", 
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
-            )
-            "home" -> HomeScreen(onLogout = {
-                currentScreen = "login"
-            })
+            }
+        },
+        floatingActionButtonPosition = androidx.compose.material3.FabPosition.End
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize().padding(if (isBottomNavVisible) paddingValues else PaddingValues(0.dp))) {
+            androidx.compose.animation.Crossfade(targetState = currentScreen) { screen ->
+                when (screen) {
+                    "login" -> LoginScreen(onSendOtp = {
+                        phoneNumber = it
+                        currentScreen = "verify_otp"
+                    })
+                    "verify_otp" -> com.example.screens.VerifyOtpScreen(
+                        phoneNumber = phoneNumber,
+                        onBack = { currentScreen = "login" },
+                        onVerify = {
+                            currentScreen = "home"
+                        }
+                    )
+                    "home" -> HomeScreen(
+                        onLogout = { currentScreen = "login" }
+                    )
+                    "more" -> com.example.screens.SmartWorkerMoreScreen(
+                        onLogout = { currentScreen = "login" }
+                    )
+                    "payroll" -> com.example.screens.SmartWorkerPayrollScreen(
+                        onMenuClick = { currentScreen = "login" }
+                    )
+                    "workers" -> com.example.screens.SmartWorkerWorkersScreen(
+                        onNavigateToWorkerDetails = { currentScreen = "worker_details" },
+                        onMenuClick = { currentScreen = "login" }
+                    )
+                    "attendance" -> {
+                        com.example.screens.SmartWorkerAttendanceScreen()
+                    }
+                    "worker_details" -> com.example.screens.SmartWorkerWorkerDetailsScreen(
+                        onBack = { currentScreen = "workers" }
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-fun HomeScreen(onLogout: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.White),
-        contentAlignment = Alignment.Center
+fun UnifiedBottomNavBar(currentTab: String, onTabSelected: (String) -> Unit) {
+    androidx.compose.material3.Surface(
+        color = androidx.compose.ui.graphics.Color.White,
+        shadowElevation = 16.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Welcome to Smart Worker!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0D1321))
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onLogout, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))) {
-                Text("Logout")
+        androidx.compose.foundation.layout.Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 12.dp)
+                .height(64.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Home, "Home", currentTab == "home") { onTabSelected("home") }
+            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Groups, "Workers", currentTab == "workers") { onTabSelected("workers") }
+            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.CalendarToday, "Attendance", currentTab == "attendance") { onTabSelected("attendance") }
+            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Payments, "Payroll", currentTab == "payroll") { onTabSelected("payroll") }
+            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.MoreHoriz, "More", currentTab == "more") { onTabSelected("more") }
+        }
+    }
+}
+
+@Composable
+fun AnimatedCustomTab(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) androidx.compose.ui.graphics.Color(0xFFE0E7FF) else androidx.compose.ui.graphics.Color.Transparent
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (isSelected) androidx.compose.ui.graphics.Color(0xFF0D5BFF) else androidx.compose.ui.graphics.Color(0xFF64748B)
+    )
+
+    androidx.compose.foundation.layout.Box(
+        modifier = Modifier
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(backgroundColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (isSelected) 16.dp else 12.dp, vertical = 10.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        androidx.compose.foundation.layout.Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) {
+            androidx.compose.material3.Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = contentColor,
+                modifier = Modifier.size(24.dp)
+            )
+            AnimatedVisibility(visible = isSelected) {
+                androidx.compose.foundation.layout.Row {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = label,
+                        color = contentColor,
+                        fontSize = 12.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
 }
+
+
 
 @Composable
 fun LoginScreen(onSendOtp: (String) -> Unit = {}) {
