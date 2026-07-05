@@ -180,4 +180,58 @@ class AttendanceRepository(private val db: AppDatabase) {
         }
         return MarkResult.Ok("Bulk attendance marked as $status for $count worker(s).")
     }
+
+    // ── Quick Mark / QR lookup (port of Flask /api/worker_lookup) ──────────
+
+    data class LookupResult(
+        val worker: Worker,
+        val record: AttendanceRecord?,
+        val canCheckIn: Boolean,
+        val canCheckOut: Boolean,
+        val closureReason: String?,
+        val closureLocked: Boolean,
+    )
+
+    sealed interface Lookup {
+        data class Found(val result: LookupResult) : Lookup
+        data class NotFound(val message: String) : Lookup
+    }
+
+    /**
+     * Resolve a scanned QR payload ("SMARTWORKER:MA001") or typed worker code
+     * to today's attendance state. Scoped attendance users get one generic
+     * failure for missing/inactive/out-of-scope workers so the lookup doesn't
+     * confirm which IDs exist.
+     */
+    suspend fun lookup(actor: User, rawCode: String, workerRepo: WorkerRepository): Lookup {
+        val code = rawCode.trim().removePrefix("SMARTWORKER:").trim()
+        if (code.isEmpty()) return Lookup.NotFound("Enter or scan an employee ID.")
+        val worker = db.workerDao().byCode(code)
+        val today = LocalDate.now()
+
+        if (!actor.isAdmin) {
+            if (worker == null || worker.status != "active" || !workerRepo.visibleToUser(worker, actor, today)) {
+                return Lookup.NotFound("No matching worker on your site. Check the ID or contact the Administrator.")
+            }
+        } else {
+            if (worker == null) return Lookup.NotFound("No worker found for ID $code.")
+            if (worker.status != "active") return Lookup.NotFound("${worker.fullName} is inactive.")
+        }
+
+        val record = db.attendanceDao().byWorkerAndDate(worker.id, today)
+        val assignments = db.assignmentDao().forWorkerOnce(worker.id)
+        val closure = PayrollCalculator.closureForWorkerOnDate(db.closureDao().onDate(today), assignments, today)
+
+        return Lookup.Found(
+            LookupResult(
+                worker = worker,
+                record = record,
+                canCheckIn = record?.checkInTime == null,
+                canCheckOut = record != null && record.checkInTime != null && record.checkOutTime == null &&
+                    record.status in listOf(AttendanceStatus.PRESENT, AttendanceStatus.LATE),
+                closureReason = closure?.reason,
+                closureLocked = closure != null && !closure.allowAttendance,
+            )
+        )
+    }
 }

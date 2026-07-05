@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -39,6 +40,8 @@ class VmFactory(private val c: AppContainer) : ViewModelProvider.Factory {
         modelClass.isAssignableFrom(TransactionsViewModel::class.java) -> TransactionsViewModel(c)
         modelClass.isAssignableFrom(NotificationsViewModel::class.java) -> NotificationsViewModel(c)
         modelClass.isAssignableFrom(MoreViewModel::class.java) -> MoreViewModel(c)
+        modelClass.isAssignableFrom(QuickMarkViewModel::class.java) -> QuickMarkViewModel(c)
+        modelClass.isAssignableFrom(PayslipViewModel::class.java) -> PayslipViewModel(c)
         else -> throw IllegalArgumentException("Unknown ViewModel ${modelClass.name}")
     } as T
 }
@@ -315,4 +318,72 @@ class NotificationsViewModel(private val c: AppContainer) : ViewModel() {
 class MoreViewModel(c: AppContainer) : ViewModel() {
     val company: StateFlow<CompanySetting?> =
         c.catalogRepository.company.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Quick Mark (QR / worker-ID attendance)
+// ─────────────────────────────────────────────────────────────────────────────
+class QuickMarkViewModel(private val c: AppContainer) : ViewModel() {
+    private val _state = MutableStateFlow<AttendanceRepository.Lookup?>(null)
+    val state: StateFlow<AttendanceRepository.Lookup?> = _state.asStateFlow()
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
+    fun clearMessage() { _message.value = null }
+    fun reset() { _state.value = null; _message.value = null }
+
+    fun lookup(actor: User, code: String) {
+        viewModelScope.launch {
+            _busy.value = true
+            _state.value = c.attendanceRepository.lookup(actor, code, c.workerRepository)
+            _busy.value = false
+        }
+    }
+
+    /** Check the worker in (first tap) or out (second tap on an open shift). */
+    fun markPresent(actor: User, worker: Worker) {
+        viewModelScope.launch {
+            _busy.value = true
+            val r = c.attendanceRepository.mark(
+                actor, worker, LocalDate.now(), AttendanceStatus.PRESENT, markedVia = "worker_id",
+            )
+            _message.value = when (r) {
+                is AttendanceRepository.MarkResult.Ok -> r.message
+                is AttendanceRepository.MarkResult.Denied -> r.message
+            }
+            // Refresh the lookup so the buttons reflect the new state.
+            _state.value = c.attendanceRepository.lookup(actor, worker.workerCode, c.workerRepository)
+            _busy.value = false
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Payslip (per-worker monthly breakdown)
+// ─────────────────────────────────────────────────────────────────────────────
+class PayslipViewModel(private val c: AppContainer) : ViewModel() {
+    data class SlipState(
+        val row: PayrollRepository.PayrollRow? = null,
+        val company: CompanySetting? = null,
+        val loading: Boolean = true,
+    )
+
+    private val _state = MutableStateFlow(SlipState())
+    val state: StateFlow<SlipState> = _state.asStateFlow()
+
+    fun load(workerId: Long, period: YearMonth) {
+        viewModelScope.launch {
+            _state.value = SlipState(loading = true)
+            val worker = c.workerRepository.workerOnce(workerId)
+            if (worker == null) {
+                _state.value = SlipState(loading = false)
+                return@launch
+            }
+            val row = c.payrollRepository.slip(worker, period.monthValue, period.year)
+            val company = c.db.companyDao().settings().firstOrNull()
+            _state.value = SlipState(row = row, company = company, loading = false)
+        }
+    }
 }

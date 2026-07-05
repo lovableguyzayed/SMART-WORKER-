@@ -110,6 +110,8 @@ fun AppRoot(appVm: AppViewModel, factory: VmFactory) {
 fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHostState) {
     var currentScreen by remember { mutableStateOf("home") }
     var detailWorkerId by remember { mutableStateOf<Long?>(null) }
+    var payslipWorkerId by remember { mutableStateOf<Long?>(null) }
+    var payslipPeriod by remember { mutableStateOf(java.time.YearMonth.now()) }
     val currentUser by appVm.currentUser.collectAsStateLifecycle()
     val user = currentUser ?: return
 
@@ -141,10 +143,16 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     "attendance" -> SmartWorkerAttendanceScreen(
                         vm = viewModel(factory = factory),
                         user = user,
+                        onOpenQuickMark = { currentScreen = "quick_mark" },
                     )
                     "payroll" -> SmartWorkerPayrollScreen(
                         vm = viewModel(factory = factory),
                         isAdmin = user.isAdmin,
+                        onOpenPayslip = { workerId, period ->
+                            payslipWorkerId = workerId
+                            payslipPeriod = period
+                            currentScreen = "payslip"
+                        },
                     )
                     "more" -> SmartWorkerMoreScreen(
                         appVm = appVm,
@@ -163,6 +171,17 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     "worker_details" -> SmartWorkerWorkerDetailsScreen(
                         workerId = detailWorkerId ?: 0L,
                         onBack = { currentScreen = "workers" },
+                    )
+                    "quick_mark" -> com.example.screens.QuickMarkScreen(
+                        vm = viewModel(factory = factory),
+                        user = user,
+                        onBack = { currentScreen = "attendance" },
+                    )
+                    "payslip" -> com.example.screens.PayslipScreen(
+                        vm = viewModel(factory = factory),
+                        workerId = payslipWorkerId ?: 0L,
+                        period = payslipPeriod,
+                        onBack = { currentScreen = "payroll" },
                     )
                 }
             }

@@ -57,7 +57,11 @@ import com.example.ui.vm.PayrollViewModel
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun SmartWorkerPayrollScreen(vm: PayrollViewModel, isAdmin: Boolean) {
+fun SmartWorkerPayrollScreen(
+    vm: PayrollViewModel,
+    isAdmin: Boolean,
+    onOpenPayslip: (Long, java.time.YearMonth) -> Unit = { _, _ -> },
+) {
     val period by vm.period.collectAsStateLifecycle()
     val rows by vm.rows.collectAsStateLifecycle()
     val totals by vm.totals.collectAsStateLifecycle()
@@ -118,7 +122,11 @@ fun SmartWorkerPayrollScreen(vm: PayrollViewModel, isAdmin: Boolean) {
             } else {
                 LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(rows, key = { it.worker.id }) { row ->
-                        PayrollRow(row, isAdmin) { row.recordId?.let(vm::togglePaid) }
+                        PayrollRow(
+                            row, isAdmin,
+                            onOpen = { onOpenPayslip(row.worker.id, period) },
+                            onTogglePaid = { row.recordId?.let(vm::togglePaid) },
+                        )
                     }
                     item { Spacer(Modifier.height(24.dp)) }
                 }
@@ -136,8 +144,14 @@ private fun TotalItem(label: String, value: Double, color: Color) {
 }
 
 @Composable
-private fun PayrollRow(row: PayrollRepository.PayrollRow, isAdmin: Boolean, onTogglePaid: () -> Unit) {
+private fun PayrollRow(
+    row: PayrollRepository.PayrollRow,
+    isAdmin: Boolean,
+    onOpen: () -> Unit,
+    onTogglePaid: () -> Unit,
+) {
     Card(
+        onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground),

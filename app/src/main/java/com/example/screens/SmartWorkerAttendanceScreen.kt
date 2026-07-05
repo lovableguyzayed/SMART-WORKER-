@@ -65,7 +65,7 @@ import com.example.ui.vm.AttendanceViewModel
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User) {
+fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User, onOpenQuickMark: () -> Unit = {}) {
     val date by vm.date.collectAsStateLifecycle()
     val rows by vm.rows.collectAsStateLifecycle()
     val totals by vm.totals.collectAsStateLifecycle()
@@ -111,12 +111,11 @@ fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User) {
                 MiniKpi("Leave", totals.leave, Purple, Modifier.weight(1f))
             }
 
-            if (user.isAdmin) {
-                Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (user.isAdmin) {
                     BulkButton("Mark all present", Success, Modifier.weight(1f)) { showBulk = true }
                 }
-            } else {
-                Spacer(Modifier.height(12.dp))
+                BulkButton("Quick Mark (ID)", PrimaryBlue, Modifier.weight(1f), onOpenQuickMark)
             }
 
             HorizontalDivider(color = DividerColor)
