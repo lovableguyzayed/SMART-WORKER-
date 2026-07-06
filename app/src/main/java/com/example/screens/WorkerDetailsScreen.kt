@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -149,7 +149,7 @@ fun SmartWorkerWorkerDetailsScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ActionTile("Edit\nWorker", Icons.Filled.ManageAccounts, PrimaryBlue, Modifier.weight(1f)) { onEdit(w.id) }
                             ActionTile("Assign\nProject", Icons.AutoMirrored.Filled.Assignment, Purple, Modifier.weight(1f)) { dialog = "assign" }
-                            ActionTile("Promote /\nRate", Icons.Filled.TrendingUp, Success, Modifier.weight(1f)) { dialog = "promote" }
+                            ActionTile("Promote /\nRate", Icons.AutoMirrored.Filled.TrendingUp, Success, Modifier.weight(1f)) { dialog = "promote" }
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

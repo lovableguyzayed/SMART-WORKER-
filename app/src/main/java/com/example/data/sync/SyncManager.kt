@@ -41,7 +41,9 @@ class SyncManager(private val db: AppDatabase, context: Context) {
         .build()
 
     val isConfigured: Boolean
-        get() = BuildConfig.SUPABASE_URL.isNotBlank() && BuildConfig.SUPABASE_ANON_KEY.isNotBlank()
+        get() = BuildConfig.SUPABASE_URL.startsWith("http") &&
+            BuildConfig.SUPABASE_ANON_KEY.isNotBlank() &&
+            BuildConfig.SUPABASE_ANON_KEY != "UNSET"
 
     private val _lastResult = MutableStateFlow<String?>(prefs.getString(KEY_LAST_RESULT, null))
     val lastResult: StateFlow<String?> = _lastResult
