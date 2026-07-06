@@ -131,7 +131,7 @@ fun SmartWorkerWorkerDetailsScreen(
         val w = worker
         if (w == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Loading…", color = TextSecondary)
+                androidx.compose.material3.CircularProgressIndicator(color = PrimaryBlue)
             }
             return@Scaffold
         }

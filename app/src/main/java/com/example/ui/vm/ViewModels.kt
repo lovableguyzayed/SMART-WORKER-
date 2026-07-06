@@ -101,7 +101,7 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
 // ─────────────────────────────────────────────────────────────────────────────
 //  Dashboard
 // ─────────────────────────────────────────────────────────────────────────────
-class DashboardViewModel(c: AppContainer) : ViewModel() {
+class DashboardViewModel(private val c: AppContainer) : ViewModel() {
     data class DashboardState(
         val totalWorkers: Int = 0,
         val present: Int = 0,
@@ -131,6 +131,11 @@ class DashboardViewModel(c: AppContainer) : ViewModel() {
             recent = records.mapNotNull { r -> byId[r.workerId]?.let { r to it } }.take(8),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
+
+    /** Upcoming closure days (Flask dashboard parity). */
+    val upcomingClosures: StateFlow<List<com.example.data.model.ClosureDay>> =
+        c.catalogRepository.upcomingClosures()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

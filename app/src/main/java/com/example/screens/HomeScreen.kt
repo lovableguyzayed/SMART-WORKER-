@@ -75,6 +75,7 @@ fun HomeScreen(
     onQuickAction: (String) -> Unit,
 ) {
     val state by vm.state.collectAsStateLifecycle()
+    val upcomingClosures by vm.upcomingClosures.collectAsStateLifecycle()
 
     Scaffold(
         containerColor = BackgroundColor,
@@ -141,6 +142,42 @@ fun HomeScreen(
                                     title = "${worker.fullName} — ${record.status.replaceFirstChar { it.uppercase() }}",
                                     time = record.checkInTime?.toLocalTime()?.toString() ?: worker.workerCode,
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+            if (upcomingClosures.isNotEmpty()) {
+                item {
+                    Column(Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader("Upcoming Closures")
+                        Spacer(Modifier.height(10.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            upcomingClosures.take(5).forEach { c ->
+                                androidx.compose.material3.Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                                    elevation = CardDefaults.cardElevation(0.dp),
+                                    border = CardBorder,
+                                ) {
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(Modifier.weight(1f)) {
+                                            Text(
+                                                c.date.format(java.time.format.DateTimeFormatter.ofPattern("EEE, dd MMM yyyy")),
+                                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Navy,
+                                            )
+                                            Text(c.reason, fontSize = 12.sp, color = TextSecondary)
+                                        }
+                                        com.example.ui.StatusPill(
+                                            if (c.allowAttendance) "Open" else "Locked",
+                                            if (c.allowAttendance) Success else Danger,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

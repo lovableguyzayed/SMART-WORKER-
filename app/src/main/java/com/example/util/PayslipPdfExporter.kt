@@ -147,5 +147,5 @@ object PayslipPdfExporter {
         return file
     }
 
-    private fun money(v: Double): String = "Rs. %,.2f".format(v)
+    private fun money(v: Double): String = "\u20B9%,.2f".format(v)
 }
