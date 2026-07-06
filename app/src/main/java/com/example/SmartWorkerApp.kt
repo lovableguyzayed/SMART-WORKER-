@@ -2,6 +2,7 @@ package com.example
 
 import android.app.Application
 import com.example.data.AppContainer
+import com.example.data.sync.SyncWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,5 +20,7 @@ class SmartWorkerApp : Application() {
             container.seedIfEmpty()
             container.authRepository.restoreSession()
         }
+        // Background cloud replication (no-op until Supabase keys are configured).
+        SyncWorker.schedule(this)
     }
 }

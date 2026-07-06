@@ -79,6 +79,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun QuickMarkScreen(vm: QuickMarkViewModel, user: User, onBack: () -> Unit) {
     var code by remember { mutableStateOf("") }
+    var scanning by remember { mutableStateOf(false) }
     val state by vm.state.collectAsStateLifecycle()
     val busy by vm.busy.collectAsStateLifecycle()
     val message by vm.message.collectAsStateLifecycle()
@@ -136,16 +137,36 @@ fun QuickMarkScreen(vm: QuickMarkViewModel, user: User, onBack: () -> Unit) {
                         ),
                     )
                     Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { vm.lookup(user, code) },
-                        enabled = code.isNotBlank() && !busy,
-                        modifier = Modifier.fillMaxWidth().height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    ) {
-                        Icon(Icons.Filled.Search, null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Find Worker", fontWeight = FontWeight.SemiBold)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { vm.lookup(user, code) },
+                            enabled = code.isNotBlank() && !busy,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                        ) {
+                            Icon(Icons.Filled.Search, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Find", fontWeight = FontWeight.SemiBold)
+                        }
+                        Button(
+                            onClick = { scanning = !scanning },
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Navy),
+                        ) {
+                            Icon(Icons.Filled.QrCodeScanner, null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(if (scanning) "Stop" else "Scan QR", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (scanning) {
+                        Spacer(Modifier.height(12.dp))
+                        com.example.ui.QrScannerPanel { scanned ->
+                            scanning = false
+                            code = scanned.removePrefix("SMARTWORKER:").trim().uppercase()
+                            vm.lookup(user, scanned)
+                        }
                     }
                 }
             }

@@ -47,6 +47,7 @@ fun SwTopBar(
     onSearch: (() -> Unit)? = null,
     onNotifications: (() -> Unit)? = null,
     leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Surface(color = CardBackground, shadowElevation = 2.dp) {
         Row(
@@ -68,6 +69,10 @@ fun SwTopBar(
                 color = Navy,
                 modifier = Modifier.weight(1f),
             )
+            if (trailing != null) {
+                trailing()
+                Spacer(Modifier.width(8.dp))
+            }
             if (onSearch != null) {
                 Icon(
                     Icons.Filled.Search, "Search",

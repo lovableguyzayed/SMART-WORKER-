@@ -54,7 +54,11 @@ import com.example.ui.theme.Success
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.ui.vm.PayrollViewModel
+import com.example.util.CsvExporter
 import java.time.format.DateTimeFormatter
+import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun SmartWorkerPayrollScreen(
@@ -67,10 +71,22 @@ fun SmartWorkerPayrollScreen(
     val totals by vm.totals.collectAsStateLifecycle()
     val loading by vm.loading.collectAsStateLifecycle()
     val fmt = DateTimeFormatter.ofPattern("MMMM yyyy")
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = BackgroundColor,
-        topBar = { SwTopBar(title = "Payroll") },
+        topBar = {
+            SwTopBar(
+                title = "Payroll",
+                trailing = if (rows.isNotEmpty()) ({
+                    IconButton(onClick = {
+                        CsvExporter.share(context, "payroll_$period.csv", CsvExporter.payrollCsv(rows, period))
+                    }) {
+                        Icon(Icons.Filled.IosShare, "Export payroll CSV", tint = Navy, modifier = Modifier.size(22.dp))
+                    }
+                }) else null,
+            )
+        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             // Month selector

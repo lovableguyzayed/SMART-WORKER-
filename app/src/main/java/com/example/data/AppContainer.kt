@@ -7,6 +7,7 @@ import com.example.data.repo.AuthRepository
 import com.example.data.repo.CatalogRepository
 import com.example.data.repo.PayrollRepository
 import com.example.data.repo.WorkerRepository
+import com.example.data.sync.SyncManager
 
 /**
  * Lightweight manual dependency-injection container. A single instance is held
@@ -20,6 +21,7 @@ class AppContainer(context: Context) {
     val attendanceRepository = AttendanceRepository(db)
     val payrollRepository = PayrollRepository(db)
     val catalogRepository = CatalogRepository(db)
+    val syncManager = SyncManager(db, context)
 
     suspend fun seedIfEmpty() = DataSeeder(db).seedIfEmpty()
 }

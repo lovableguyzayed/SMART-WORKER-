@@ -42,6 +42,9 @@ class VmFactory(private val c: AppContainer) : ViewModelProvider.Factory {
         modelClass.isAssignableFrom(MoreViewModel::class.java) -> MoreViewModel(c)
         modelClass.isAssignableFrom(QuickMarkViewModel::class.java) -> QuickMarkViewModel(c)
         modelClass.isAssignableFrom(PayslipViewModel::class.java) -> PayslipViewModel(c)
+        modelClass.isAssignableFrom(WorkerFormViewModel::class.java) -> WorkerFormViewModel(c)
+        modelClass.isAssignableFrom(WorkerAdminViewModel::class.java) -> WorkerAdminViewModel(c)
+        modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(c)
         else -> throw IllegalArgumentException("Unknown ViewModel ${modelClass.name}")
     } as T
 }
@@ -78,6 +81,21 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
 
     fun clearLoginError() { _loginError.value = null }
     fun logout() = c.authRepository.logout()
+
+    /** Manual cloud sync trigger (More screen). Result lands in the snackbar. */
+    fun syncNow() {
+        viewModelScope.launch {
+            showMessage("Syncing…")
+            val result = c.syncManager.syncNow()
+            showMessage(
+                when (result) {
+                    is com.example.data.sync.SyncManager.SyncResult.Success -> "Cloud sync complete — ${result.rows} row(s) replicated."
+                    is com.example.data.sync.SyncManager.SyncResult.Skipped -> result.reason
+                    is com.example.data.sync.SyncManager.SyncResult.Failed -> result.message
+                }
+            )
+        }
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -12,27 +12,45 @@ android {
 
   defaultConfig {
     applicationId = "com.aistudio.smartworker.kwzl"
-    minSdk = 24
+    // java.time is used throughout the data layer; API 26+ ships it natively.
+    minSdk = 26
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 2
+    versionName = "2.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
+  // Signing is intentionally resilient so `assembleDebug` and `assembleRelease`
+  // both produce an installable APK on a fresh clone with zero manual setup:
+  //  - debug: uses a repo-local debug.keystore when present, otherwise the
+  //    default Android debug keystore that the SDK auto-generates.
+  //  - release: signs with the production upload key only when the keystore
+  //    file AND its passwords are present; otherwise falls back to debug
+  //    signing so the build never fails. Play Store uploads still require the
+  //    real key (KEYSTORE_PATH / STORE_PASSWORD / KEY_PASSWORD).
+  val uploadKeystore = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
+  val hasUploadKey = uploadKeystore.exists() &&
+    !System.getenv("STORE_PASSWORD").isNullOrEmpty() &&
+    !System.getenv("KEY_PASSWORD").isNullOrEmpty()
+  val localDebugKeystore = file("${rootDir}/debug.keystore")
+
   signingConfigs {
-    create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+    if (hasUploadKey) {
+      create("release") {
+        storeFile = uploadKeystore
+        storePassword = System.getenv("STORE_PASSWORD")
+        keyAlias = "upload"
+        keyPassword = System.getenv("KEY_PASSWORD")
+      }
     }
-    create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+    if (localDebugKeystore.exists()) {
+      create("debugConfig") {
+        storeFile = localDebugKeystore
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -41,10 +59,17 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      signingConfig = if (hasUploadKey) {
+        signingConfigs.getByName("release")
+      } else {
+        getByName("debug").signingConfig
+      }
     }
     debug {
-      signingConfig = signingConfigs.getByName("debugConfig")
+      if (localDebugKeystore.exists()) {
+        signingConfig = signingConfigs.getByName("debugConfig")
+      }
+      // else: AGP's built-in debug keystore is used automatically.
     }
   }
   compileOptions {
@@ -72,10 +97,12 @@ dependencies {
   implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.core)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
+  implementation(libs.mlkit.barcode.scanning)
+  implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)

@@ -112,10 +112,26 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
     var detailWorkerId by remember { mutableStateOf<Long?>(null) }
     var payslipWorkerId by remember { mutableStateOf<Long?>(null) }
     var payslipPeriod by remember { mutableStateOf(java.time.YearMonth.now()) }
+    var formEditWorkerId by remember { mutableStateOf<Long?>(null) }
+    var reportWorkerId by remember { mutableStateOf<Long?>(null) }
     val currentUser by appVm.currentUser.collectAsStateLifecycle()
     val user = currentUser ?: return
 
     val isTab = currentScreen in listOf("home", "workers", "attendance", "payroll", "more")
+
+    // System back mirrors the on-screen back arrows instead of exiting the app.
+    androidx.activity.compose.BackHandler(enabled = !isTab || currentScreen != "home") {
+        currentScreen = when (currentScreen) {
+            "worker_details" -> "workers"
+            "worker_form" -> if (formEditWorkerId == null) "workers" else "worker_details"
+            "worker_report" -> if (detailWorkerId != null) "worker_details" else "reports"
+            "payslip" -> "payroll"
+            "quick_mark" -> "attendance"
+            "transactions", "manage", "closures", "attendance_users", "company_settings", "reports" -> "more"
+            "notifications" -> "home"
+            else -> "home"
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -139,6 +155,8 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     "workers" -> SmartWorkerWorkersScreen(
                         vm = viewModel(factory = factory),
                         onOpenWorker = { id -> detailWorkerId = id; currentScreen = "worker_details" },
+                        isAdmin = user.isAdmin,
+                        onAddWorker = { formEditWorkerId = null; currentScreen = "worker_form" },
                     )
                     "attendance" -> SmartWorkerAttendanceScreen(
                         vm = viewModel(factory = factory),
@@ -156,8 +174,7 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     )
                     "more" -> SmartWorkerMoreScreen(
                         appVm = appVm,
-                        onOpenTransactions = { currentScreen = "transactions" },
-                        onOpenNotifications = { currentScreen = "notifications" },
+                        onNavigate = { destination -> currentScreen = destination },
                         onLogout = { appVm.logout() },
                     )
                     "transactions" -> TransactionsScreen(
@@ -170,7 +187,51 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     )
                     "worker_details" -> SmartWorkerWorkerDetailsScreen(
                         workerId = detailWorkerId ?: 0L,
+                        user = user,
+                        adminVm = viewModel(factory = factory),
                         onBack = { currentScreen = "workers" },
+                        onEdit = { id -> formEditWorkerId = id; currentScreen = "worker_form" },
+                        onOpenReport = { id -> reportWorkerId = id; currentScreen = "worker_report" },
+                    )
+                    "worker_form" -> com.example.screens.WorkerFormScreen(
+                        vm = viewModel(factory = factory),
+                        editWorkerId = formEditWorkerId,
+                        onBack = {
+                            currentScreen = if (formEditWorkerId == null) "workers" else "worker_details"
+                        },
+                        onSaved = { message ->
+                            appVm.showMessage(message)
+                            currentScreen = if (formEditWorkerId == null) "workers" else "worker_details"
+                        },
+                    )
+                    "worker_report" -> com.example.screens.WorkerReportScreen(
+                        vm = viewModel(factory = factory),
+                        workerId = reportWorkerId ?: 0L,
+                        onBack = { currentScreen = if (detailWorkerId != null) "worker_details" else "reports" },
+                    )
+                    "manage" -> com.example.screens.ManageScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "closures" -> com.example.screens.ClosuresScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "attendance_users" -> com.example.screens.AttendanceUsersScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "company_settings" -> com.example.screens.CompanySettingsScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "reports" -> com.example.screens.ReportsScreen(
+                        onBack = { currentScreen = "more" },
+                        onOpenWorkerReport = { id ->
+                            detailWorkerId = null
+                            reportWorkerId = id
+                            currentScreen = "worker_report"
+                        },
                     )
                     "quick_mark" -> com.example.screens.QuickMarkScreen(
                         vm = viewModel(factory = factory),

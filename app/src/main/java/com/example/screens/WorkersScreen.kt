@@ -58,6 +58,8 @@ import com.example.ui.vm.WorkersViewModel
 fun SmartWorkerWorkersScreen(
     vm: WorkersViewModel,
     onOpenWorker: (Long) -> Unit,
+    isAdmin: Boolean = false,
+    onAddWorker: () -> Unit = {},
 ) {
     val workers by vm.workers.collectAsStateLifecycle()
     val search by vm.search.collectAsStateLifecycle()
@@ -67,6 +69,18 @@ fun SmartWorkerWorkersScreen(
     Scaffold(
         containerColor = BackgroundColor,
         topBar = { SwTopBar(title = "Workers") },
+        floatingActionButton = {
+            if (isAdmin) {
+                androidx.compose.material3.FloatingActionButton(
+                    onClick = onAddWorker,
+                    containerColor = PrimaryBlue,
+                    contentColor = androidx.compose.ui.graphics.Color.White,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Add, "Add worker")
+                }
+            }
+        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             // Search
