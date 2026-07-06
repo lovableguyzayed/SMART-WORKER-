@@ -19,15 +19,18 @@ import java.io.File
 object ImageStore {
 
     /** Copy [uri] into filesDir/images and return the stored file's absolute path. */
-    fun saveFromUri(context: Context, uri: Uri, prefix: String): String? = try {
-        val dir = File(context.filesDir, "images").apply { mkdirs() }
-        val file = File(dir, "${prefix}_${System.currentTimeMillis()}.jpg")
-        context.contentResolver.openInputStream(uri)?.use { input ->
-            file.outputStream().use { output -> input.copyTo(output) }
-        } ?: return null
-        file.absolutePath
-    } catch (_: Exception) {
-        null
+    fun saveFromUri(context: Context, uri: Uri, prefix: String): String? {
+        return try {
+            val dir = File(context.filesDir, "images").apply { mkdirs() }
+            val file = File(dir, "${prefix}_${System.currentTimeMillis()}.jpg")
+            val stream = context.contentResolver.openInputStream(uri) ?: return null
+            stream.use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+            file.absolutePath
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun loadBitmap(path: String?, maxDim: Int = 512): Bitmap? {

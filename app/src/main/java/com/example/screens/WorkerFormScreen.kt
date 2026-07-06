@@ -357,7 +357,7 @@ private fun LatePolicyFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.
 // ── Small form building blocks ───────────────────────────────────────────────
 
 @Composable
-private fun FormCard(title: String, content: @Composable Column.() -> Unit) {
+private fun FormCard(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),

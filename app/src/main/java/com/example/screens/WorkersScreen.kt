@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonSearch
@@ -78,7 +79,7 @@ fun SmartWorkerWorkersScreen(
                     contentColor = androidx.compose.ui.graphics.Color.White,
                     shape = androidx.compose.foundation.shape.CircleShape,
                 ) {
-                    Icon(androidx.compose.material.icons.Icons.Filled.Add, "Add worker")
+                    Icon(Icons.Filled.Add, "Add worker")
                 }
             }
         },

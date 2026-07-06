@@ -58,6 +58,7 @@ import com.example.ui.theme.Success
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.util.CsvExporter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
@@ -134,7 +135,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenWorkerReport: (Long) -> Unit) {
             item {
                 ReportRow("Workers master list", "All workers with rates and policies", Icons.Filled.Groups, PrimaryBlue) {
                     export {
-                        val all = kotlinx.coroutines.flow.first(container.workerRepository.allWorkers)
+                        val all = container.workerRepository.allWorkers.first()
                         "workers.csv" to CsvExporter.workersCsv(all)
                     }
                 }
@@ -145,7 +146,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenWorkerReport: (Long) -> Unit) {
                         val end = LocalDate.now()
                         val start = end.minusDays(30)
                         val records = container.db.attendanceDao().betweenDates(start, end)
-                        val byId = kotlinx.coroutines.flow.first(container.workerRepository.allWorkers).associateBy { it.id }
+                        val byId = container.workerRepository.allWorkers.first().associateBy { it.id }
                         "attendance_${start}_$end.csv" to CsvExporter.attendanceCsv(records, byId)
                     }
                 }
@@ -154,10 +155,9 @@ fun ReportsScreen(onBack: () -> Unit, onOpenWorkerReport: (Long) -> Unit) {
                 ReportRow("Transactions — this month", "Advances, loans, bonuses and recoveries", Icons.Filled.Receipt, Navy) {
                     export {
                         val ym = YearMonth.now()
-                        val txns = kotlinx.coroutines.flow.first(
-                            container.catalogRepository.transactionsBetween(ym.atDay(1), ym.atEndOfMonth())
-                        )
-                        val byId = kotlinx.coroutines.flow.first(container.workerRepository.allWorkers).associateBy { it.id }
+                        val txns = container.catalogRepository
+                            .transactionsBetween(ym.atDay(1), ym.atEndOfMonth()).first()
+                        val byId = container.workerRepository.allWorkers.first().associateBy { it.id }
                         "transactions_$ym.csv" to CsvExporter.transactionsCsv(txns, byId)
                     }
                 }
