@@ -98,6 +98,8 @@ data class CompanySetting(
     val website: String = "",
     val gstNumber: String = "",
     val registrationNumber: String = "",
+    /** Absolute path of the company logo inside app storage (optional). */
+    val logo: String? = null,
 )
 
 @Entity(tableName = "sites")
@@ -283,6 +285,8 @@ data class Worker(
     val leavePolicyEnabled: Boolean = true,
 
     val status: String = "active", // active, inactive
+    /** Absolute path of the worker's photo inside app storage (optional). */
+    val profileImage: String? = null,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now(),
 )

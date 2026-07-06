@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -154,7 +155,13 @@ private fun WorkerRow(worker: Worker, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(48.dp).background(AvatarBlueBg, CircleShape), contentAlignment = Alignment.Center) {
-            Text(worker.fullName.take(1), color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            com.example.util.LocalImage(
+                path = worker.profileImage,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp).clip(CircleShape),
+            ) {
+                Text(worker.fullName.take(1), color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
         }
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {

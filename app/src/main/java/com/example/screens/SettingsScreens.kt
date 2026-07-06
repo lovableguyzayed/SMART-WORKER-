@@ -75,6 +75,18 @@ import com.example.ui.theme.Warning
 import com.example.ui.theme.White
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Business
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import com.example.ui.theme.AvatarBlueBg
+import com.example.util.ImageStore
+import com.example.util.LocalImage
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  COMPANY SETTINGS  (branding shown on payslips / PDF exports)
@@ -91,6 +103,7 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
     var website by remember { mutableStateOf("") }
     var gst by remember { mutableStateOf("") }
     var reg by remember { mutableStateOf("") }
+    var logo by remember { mutableStateOf<String?>(null) }
     var loaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(company) {
@@ -98,6 +111,7 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
         if (c != null && !loaded) {
             name = c.name; address = c.address; phone = c.phone; email = c.email
             website = c.website; gst = c.gstNumber; reg = c.registrationNumber
+            logo = c.logo
             loaded = true
         }
     }
@@ -129,6 +143,42 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
                 "Shown on payslips, reports and PDF exports.",
                 fontSize = 13.sp, color = TextSecondary,
             )
+            // Company logo (Flask logo upload port)
+            val context = LocalContext.current
+            val logoPicker = rememberLauncherForActivityResult(
+                ActivityResultContracts.PickVisualMedia(),
+            ) { uri ->
+                if (uri != null) ImageStore.saveFromUri(context, uri, "logo")?.let { logo = it }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(AvatarBlueBg)
+                        .clickable {
+                            logoPicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    LocalImage(
+                        path = logo,
+                        contentDescription = "Company logo",
+                        modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)),
+                    ) {
+                        Icon(Icons.Filled.Business, null, tint = PrimaryBlue, modifier = Modifier.size(32.dp))
+                    }
+                }
+                Spacer(Modifier.size(12.dp))
+                Column {
+                    Text("Company logo", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Navy)
+                    Text(
+                        if (logo == null) "Tap to add a logo (optional)" else "Tap to change logo",
+                        fontSize = 12.sp, color = TextSecondary,
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(Icons.Filled.AddAPhoto, "Pick logo", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
             SwFormField("Company name *", name) { name = it }
             SwFormField("Address", address, singleLine = false) { address = it }
             SwFormField("Phone", phone, keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone) { phone = it }
@@ -144,6 +194,7 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
                             name = name.trim().ifBlank { "SmartWorker" },
                             address = address, phone = phone, email = email,
                             website = website, gstNumber = gst, registrationNumber = reg,
+                            logo = logo,
                         )
                     )
                 },

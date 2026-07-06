@@ -114,6 +114,7 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
     var payslipPeriod by remember { mutableStateOf(java.time.YearMonth.now()) }
     var formEditWorkerId by remember { mutableStateOf<Long?>(null) }
     var reportWorkerId by remember { mutableStateOf<Long?>(null) }
+    var idCardWorkerId by remember { mutableStateOf<Long?>(null) }
     val currentUser by appVm.currentUser.collectAsStateLifecycle()
     val user = currentUser ?: return
 
@@ -125,6 +126,7 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
             "worker_details" -> "workers"
             "worker_form" -> if (formEditWorkerId == null) "workers" else "worker_details"
             "worker_report" -> if (detailWorkerId != null) "worker_details" else "reports"
+            "id_card" -> "worker_details"
             "payslip" -> "payroll"
             "quick_mark" -> "attendance"
             "transactions", "manage", "closures", "attendance_users", "company_settings", "reports" -> "more"
@@ -192,6 +194,11 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                         onBack = { currentScreen = "workers" },
                         onEdit = { id -> formEditWorkerId = id; currentScreen = "worker_form" },
                         onOpenReport = { id -> reportWorkerId = id; currentScreen = "worker_report" },
+                        onOpenIdCard = { id -> idCardWorkerId = id; currentScreen = "id_card" },
+                    )
+                    "id_card" -> com.example.screens.IdCardScreen(
+                        workerId = idCardWorkerId ?: 0L,
+                        onBack = { currentScreen = "worker_details" },
                     )
                     "worker_form" -> com.example.screens.WorkerFormScreen(
                         vm = viewModel(factory = factory),

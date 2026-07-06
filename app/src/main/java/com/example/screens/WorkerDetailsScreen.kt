@@ -2,6 +2,7 @@ package com.example.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -75,6 +76,8 @@ import com.example.ui.theme.Success
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.ui.vm.WorkerAdminViewModel
+import com.example.util.LocalImage
+import androidx.compose.material.icons.filled.Badge
 import kotlinx.coroutines.flow.flowOf
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -87,6 +90,7 @@ fun SmartWorkerWorkerDetailsScreen(
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
     onOpenReport: (Long) -> Unit,
+    onOpenIdCard: (Long) -> Unit,
 ) {
     val container = LocalAppContainer.current
     val worker by remember(workerId) { container.workerRepository.worker(workerId) }
@@ -151,10 +155,15 @@ fun SmartWorkerWorkerDetailsScreen(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ActionTile("Adjust\nLeave", Icons.Filled.EventAvailable, Warning, Modifier.weight(1f)) { dialog = "leave" }
                             ActionTile("Full\nReport", Icons.Filled.Description, Navy, Modifier.weight(1f)) { onOpenReport(w.id) }
+                            ActionTile("ID Card\n+ QR", Icons.Filled.Badge, PrimaryBlue, Modifier.weight(1f)) { onOpenIdCard(w.id) }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ActionTile(
                                 if (w.status == "active") "Deactivate" else "Reactivate",
                                 Icons.Filled.PersonOff, Danger, Modifier.weight(1f),
                             ) { dialog = "deactivate" }
+                            Spacer(Modifier.weight(2f))
                         }
                     }
                 }
@@ -504,8 +513,17 @@ private fun ProfileHeader(w: Worker) {
         border = CardBorder,
     ) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(64.dp).background(AvatarBlueBg, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(38.dp))
+            Box(
+                Modifier.size(64.dp).background(AvatarBlueBg, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                LocalImage(
+                    path = w.profileImage,
+                    contentDescription = "Photo of ${'$'}{w.fullName}",
+                    modifier = Modifier.size(64.dp).clip(CircleShape),
+                ) {
+                    Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(38.dp))
+                }
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {

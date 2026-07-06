@@ -73,6 +73,7 @@ class WorkerFormViewModel(private val c: AppContainer) : ViewModel() {
         val closureCalculationMethod: String = "daily_percent",
         val closureExtraPercentage: String = "0",
         val status: String = "active",
+        val profileImage: String? = null,
     )
 
     private val _form = MutableStateFlow(FormState())
@@ -114,6 +115,7 @@ class WorkerFormViewModel(private val c: AppContainer) : ViewModel() {
                 closureCalculationMethod = w.closureCalculationMethod,
                 closureExtraPercentage = w.closureExtraPercentage.fmt(),
                 status = w.status,
+                profileImage = w.profileImage,
             )
         }
     }
@@ -165,6 +167,7 @@ class WorkerFormViewModel(private val c: AppContainer) : ViewModel() {
                 ) f.closureCalculationMethod else "daily_percent",
                 closureExtraPercentage = f.closureExtraPercentage.num()?.coerceAtLeast(0.0) ?: 0.0,
                 status = f.status,
+                profileImage = f.profileImage,
             )
 
             if (f.editingId == null) {

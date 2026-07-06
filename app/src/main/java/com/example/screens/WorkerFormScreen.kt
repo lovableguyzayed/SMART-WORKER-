@@ -65,6 +65,19 @@ import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.TextSecondary
 import com.example.ui.vm.EMPLOYEE_TYPES
 import com.example.ui.vm.WorkerFormViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import com.example.ui.theme.AvatarBlueBg
+import com.example.util.ImageStore
+import com.example.util.LocalImage
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -113,6 +126,46 @@ fun WorkerFormScreen(
             Spacer(Modifier.height(12.dp))
 
             FormCard("Identity") {
+                // Worker photo (Flask profile-image upload port)
+                val context = LocalContext.current
+                val photoPicker = rememberLauncherForActivityResult(
+                    ActivityResultContracts.PickVisualMedia(),
+                ) { uri ->
+                    if (uri != null) {
+                        val saved = ImageStore.saveFromUri(context, uri, "worker")
+                        if (saved != null) vm.update { it.copy(profileImage = saved) }
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(64.dp).clip(CircleShape).background(AvatarBlueBg)
+                            .clickable {
+                                photoPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        LocalImage(
+                            path = form.profileImage,
+                            contentDescription = "Worker photo",
+                            modifier = Modifier.size(64.dp).clip(CircleShape),
+                        ) {
+                            Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(36.dp))
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("Worker photo", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Navy)
+                        Text(
+                            if (form.profileImage == null) "Tap the circle to add a photo (optional)"
+                            else "Tap to change photo",
+                            fontSize = 12.sp, color = TextSecondary,
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Filled.AddAPhoto, "Pick photo", tint = TextSecondary, modifier = Modifier.size(20.dp))
+                }
                 FormField("Full name *", form.fullName) { v -> vm.update { it.copy(fullName = v) } }
                 FormField("Phone *", form.phone, KeyboardType.Phone) { v -> vm.update { it.copy(phone = v) } }
                 FormField("Email", form.email, KeyboardType.Email) { v -> vm.update { it.copy(email = v) } }
