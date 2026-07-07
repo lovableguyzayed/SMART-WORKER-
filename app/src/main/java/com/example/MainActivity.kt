@@ -4,144 +4,252 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.foundation.clickable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.screens.VerifyOtpScreen
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.LocalAppContainer
+import com.example.ui.collectAsStateLifecycle
+import com.example.screens.SmartWorkerAttendanceScreen
+import com.example.screens.SmartWorkerMoreScreen
+import com.example.screens.SmartWorkerPayrollScreen
+import com.example.screens.SmartWorkerWorkerDetailsScreen
+import com.example.screens.SmartWorkerWorkersScreen
 import com.example.screens.HomeScreen
-import com.example.ui.theme.*
+import com.example.screens.LoginScreen
+import com.example.screens.NotificationsScreen
+import com.example.screens.TransactionsScreen
+import com.example.ui.theme.PrimaryBlue
+import com.example.ui.theme.SelectedCardBackground
+import com.example.ui.theme.SmartWorkerTheme
+import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.White
+import com.example.ui.vm.AppViewModel
+import com.example.ui.vm.VmFactory
 
 class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
-    setContent {
-      SmartWorkerTheme {
-        AppNavigation()
-      }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        val container = (application as SmartWorkerApp).container
+        setContent {
+            SmartWorkerTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    val factory = remember { VmFactory(container) }
+                    val appVm: AppViewModel = viewModel(factory = factory)
+                    AppRoot(appVm, factory)
+                }
+            }
+        }
     }
-  }
 }
 
 @Composable
-fun AppNavigation() {
-    var currentScreen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("login") }
-    var phoneNumber by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
-    
-    val isBottomNavVisible = currentScreen in listOf("home", "workers", "attendance", "payroll", "more")
+fun AppRoot(appVm: AppViewModel, factory: VmFactory) {
+    val currentUser by appVm.currentUser.collectAsStateLifecycle()
+    val snackbarMessage by appVm.snackbar.collectAsStateLifecycle()
+    val snackbarHost = remember { SnackbarHostState() }
 
-    androidx.compose.material3.Scaffold(
+    LaunchedEffect(snackbarMessage) {
+        snackbarMessage?.let {
+            snackbarHost.showSnackbar(it)
+            appVm.clearMessage()
+        }
+    }
+
+    if (currentUser == null) {
+        LoginScreen(appVm)
+    } else {
+        MainShell(appVm, factory, snackbarHost)
+    }
+}
+
+@Composable
+fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHostState) {
+    var currentScreen by remember { mutableStateOf("home") }
+    var detailWorkerId by remember { mutableStateOf<Long?>(null) }
+    var payslipWorkerId by remember { mutableStateOf<Long?>(null) }
+    var payslipPeriod by remember { mutableStateOf(java.time.YearMonth.now()) }
+    var formEditWorkerId by remember { mutableStateOf<Long?>(null) }
+    var reportWorkerId by remember { mutableStateOf<Long?>(null) }
+    var idCardWorkerId by remember { mutableStateOf<Long?>(null) }
+    val currentUser by appVm.currentUser.collectAsStateLifecycle()
+    val user = currentUser ?: return
+
+    val isTab = currentScreen in listOf("home", "workers", "attendance", "payroll", "more")
+
+    // System back mirrors the on-screen back arrows instead of exiting the app.
+    androidx.activity.compose.BackHandler(enabled = !isTab || currentScreen != "home") {
+        currentScreen = when (currentScreen) {
+            "worker_details" -> "workers"
+            "worker_form" -> if (formEditWorkerId == null) "workers" else "worker_details"
+            "worker_report" -> if (detailWorkerId != null) "worker_details" else "reports"
+            "id_card" -> "worker_details"
+            "payslip" -> "payroll"
+            "quick_mark" -> "attendance"
+            "transactions", "manage", "closures", "attendance_users", "company_settings", "reports" -> "more"
+            "notifications" -> "home"
+            else -> "home"
+        }
+    }
+
+    Scaffold(
         bottomBar = {
-            if (isBottomNavVisible) {
-                UnifiedBottomNavBar(currentScreen) { currentScreen = it }
-            }
+            if (isTab) UnifiedBottomNavBar(currentScreen) { currentScreen = it }
         },
-        floatingActionButton = {
-            if (isBottomNavVisible) {
-                androidx.compose.material3.FloatingActionButton(
-                    onClick = {},
-                    shape = androidx.compose.foundation.shape.CircleShape,
-                    containerColor = androidx.compose.ui.graphics.Color(0xFF0D5BFF),
-                    contentColor = androidx.compose.ui.graphics.Color.White,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    androidx.compose.material3.Icon(
-                        androidx.compose.material.icons.Icons.Default.Add, 
-                        contentDescription = "Add", 
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-            }
-        },
-        floatingActionButtonPosition = androidx.compose.material3.FabPosition.End
-    ) { paddingValues ->
-        Box(modifier = Modifier.fillMaxSize().padding(if (isBottomNavVisible) paddingValues else PaddingValues(0.dp))) {
-            androidx.compose.animation.Crossfade(targetState = currentScreen) { screen ->
+        snackbarHost = { SnackbarHost(snackbarHost) },
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (isTab) padding else PaddingValues(0.dp))
+        ) {
+            Crossfade(targetState = currentScreen, label = "screen") { screen ->
                 when (screen) {
-                    "login" -> LoginScreen(onSendOtp = {
-                        phoneNumber = it
-                        currentScreen = "verify_otp"
-                    })
-                    "verify_otp" -> com.example.screens.VerifyOtpScreen(
-                        phoneNumber = phoneNumber,
-                        onBack = { currentScreen = "login" },
-                        onVerify = {
-                            currentScreen = "home"
-                        }
-                    )
                     "home" -> HomeScreen(
-                        onLogout = { currentScreen = "login" }
+                        vm = viewModel(factory = factory),
+                        user = user,
+                        onOpenNotifications = { currentScreen = "notifications" },
+                        onQuickAction = { currentScreen = it },
                     )
-                    "more" -> com.example.screens.SmartWorkerMoreScreen(
-                        onLogout = { currentScreen = "login" }
+                    "workers" -> SmartWorkerWorkersScreen(
+                        vm = viewModel(factory = factory),
+                        onOpenWorker = { id -> detailWorkerId = id; currentScreen = "worker_details" },
+                        isAdmin = user.isAdmin,
+                        onAddWorker = { formEditWorkerId = null; currentScreen = "worker_form" },
                     )
-                    "payroll" -> com.example.screens.SmartWorkerPayrollScreen(
-                        onMenuClick = { currentScreen = "login" }
+                    "attendance" -> SmartWorkerAttendanceScreen(
+                        vm = viewModel(factory = factory),
+                        user = user,
+                        onOpenQuickMark = { currentScreen = "quick_mark" },
                     )
-                    "workers" -> com.example.screens.SmartWorkerWorkersScreen(
-                        onNavigateToWorkerDetails = { currentScreen = "worker_details" },
-                        onMenuClick = { currentScreen = "login" }
+                    "payroll" -> SmartWorkerPayrollScreen(
+                        vm = viewModel(factory = factory),
+                        isAdmin = user.isAdmin,
+                        onOpenPayslip = { workerId, period ->
+                            payslipWorkerId = workerId
+                            payslipPeriod = period
+                            currentScreen = "payslip"
+                        },
                     )
-                    "attendance" -> {
-                        com.example.screens.SmartWorkerAttendanceScreen()
-                    }
-                    "worker_details" -> com.example.screens.SmartWorkerWorkerDetailsScreen(
-                        onBack = { currentScreen = "workers" }
+                    "more" -> SmartWorkerMoreScreen(
+                        appVm = appVm,
+                        onNavigate = { destination -> currentScreen = destination },
+                        onLogout = { appVm.logout() },
+                    )
+                    "transactions" -> TransactionsScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "notifications" -> NotificationsScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "home" },
+                    )
+                    "worker_details" -> SmartWorkerWorkerDetailsScreen(
+                        workerId = detailWorkerId ?: 0L,
+                        user = user,
+                        adminVm = viewModel(factory = factory),
+                        onBack = { currentScreen = "workers" },
+                        onEdit = { id -> formEditWorkerId = id; currentScreen = "worker_form" },
+                        onOpenReport = { id -> reportWorkerId = id; currentScreen = "worker_report" },
+                        onOpenIdCard = { id -> idCardWorkerId = id; currentScreen = "id_card" },
+                    )
+                    "id_card" -> com.example.screens.IdCardScreen(
+                        workerId = idCardWorkerId ?: 0L,
+                        onBack = { currentScreen = "worker_details" },
+                    )
+                    "worker_form" -> com.example.screens.WorkerFormScreen(
+                        vm = viewModel(factory = factory),
+                        editWorkerId = formEditWorkerId,
+                        onBack = {
+                            currentScreen = if (formEditWorkerId == null) "workers" else "worker_details"
+                        },
+                        onSaved = { message ->
+                            appVm.showMessage(message)
+                            currentScreen = if (formEditWorkerId == null) "workers" else "worker_details"
+                        },
+                    )
+                    "worker_report" -> com.example.screens.WorkerReportScreen(
+                        vm = viewModel(factory = factory),
+                        workerId = reportWorkerId ?: 0L,
+                        onBack = { currentScreen = if (detailWorkerId != null) "worker_details" else "reports" },
+                    )
+                    "manage" -> com.example.screens.ManageScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "closures" -> com.example.screens.ClosuresScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "attendance_users" -> com.example.screens.AttendanceUsersScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "company_settings" -> com.example.screens.CompanySettingsScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
+                    )
+                    "reports" -> com.example.screens.ReportsScreen(
+                        onBack = { currentScreen = "more" },
+                        onOpenWorkerReport = { id ->
+                            detailWorkerId = null
+                            reportWorkerId = id
+                            currentScreen = "worker_report"
+                        },
+                    )
+                    "quick_mark" -> com.example.screens.QuickMarkScreen(
+                        vm = viewModel(factory = factory),
+                        user = user,
+                        onBack = { currentScreen = "attendance" },
+                    )
+                    "payslip" -> com.example.screens.PayslipScreen(
+                        vm = viewModel(factory = factory),
+                        workerId = payslipWorkerId ?: 0L,
+                        period = payslipPeriod,
+                        onBack = { currentScreen = "payroll" },
                     )
                 }
             }
@@ -151,436 +259,48 @@ fun AppNavigation() {
 
 @Composable
 fun UnifiedBottomNavBar(currentTab: String, onTabSelected: (String) -> Unit) {
-    androidx.compose.material3.Surface(
-        color = androidx.compose.ui.graphics.Color.White,
-        shadowElevation = 16.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        androidx.compose.foundation.layout.Row(
+    Surface(color = White, shadowElevation = 12.dp, modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 12.dp)
-                .height(64.dp),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                .padding(horizontal = 8.dp, vertical = 10.dp)
+                .height(56.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Home, "Home", currentTab == "home") { onTabSelected("home") }
-            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Groups, "Workers", currentTab == "workers") { onTabSelected("workers") }
-            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.CalendarToday, "Attendance", currentTab == "attendance") { onTabSelected("attendance") }
-            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.Payments, "Payroll", currentTab == "payroll") { onTabSelected("payroll") }
-            AnimatedCustomTab(androidx.compose.material.icons.Icons.Default.MoreHoriz, "More", currentTab == "more") { onTabSelected("more") }
+            AnimatedTab(Icons.Filled.Home, "Home", currentTab == "home") { onTabSelected("home") }
+            AnimatedTab(Icons.Filled.Groups, "Workers", currentTab == "workers") { onTabSelected("workers") }
+            AnimatedTab(Icons.Filled.CalendarToday, "Attendance", currentTab == "attendance") { onTabSelected("attendance") }
+            AnimatedTab(Icons.Filled.Payments, "Payroll", currentTab == "payroll") { onTabSelected("payroll") }
+            AnimatedTab(Icons.Filled.MoreHoriz, "More", currentTab == "more") { onTabSelected("more") }
         }
     }
 }
 
 @Composable
-fun AnimatedCustomTab(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, isSelected: Boolean, onClick: () -> Unit) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) androidx.compose.ui.graphics.Color(0xFFE0E7FF) else androidx.compose.ui.graphics.Color.Transparent
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) androidx.compose.ui.graphics.Color(0xFF0D5BFF) else androidx.compose.ui.graphics.Color(0xFF64748B)
-    )
-
-    androidx.compose.foundation.layout.Box(
-        modifier = Modifier
-            .clip(androidx.compose.foundation.shape.CircleShape)
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = if (isSelected) 16.dp else 12.dp, vertical = 10.dp),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        androidx.compose.foundation.layout.Row(
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
-        ) {
-            androidx.compose.material3.Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = contentColor,
-                modifier = Modifier.size(24.dp)
-            )
-            AnimatedVisibility(visible = isSelected) {
-                androidx.compose.foundation.layout.Row {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = label,
-                        color = contentColor,
-                        fontSize = 12.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-
-@Composable
-fun LoginScreen(onSendOtp: (String) -> Unit = {}) {
-    var selectedRole by remember { mutableStateOf<String?>(null) }
-    var mobileNumber by remember { mutableStateOf("") }
-    
+private fun AnimatedTab(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
+    val bg by animateColorAsState(if (selected) SelectedCardBackground else White, label = "bg")
+    val fg by animateColorAsState(if (selected) PrimaryBlue else TextSecondary, label = "fg")
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundColor)
+            .clip(CircleShape)
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (selected) 14.dp else 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        // Background Image Header area
-        Image(
-            painter = painterResource(id = R.drawable.bg_workers),
-            contentDescription = "Construction Workers Background",
-            contentScale = ContentScale.FillWidth,
-            alignment = Alignment.TopCenter,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .offset(y = (-120).dp)
-        )
-
-        // Top Content Overlay
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 64.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                shape = CircleShape,
-                shadowElevation = 8.dp,
-                color = White,
-                modifier = Modifier.size(100.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_logo),
-                    contentDescription = "Smart Worker Logo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Surface(
-                color = White.copy(alpha = 0.85f),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.padding(horizontal = 24.dp)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Row {
-                        Text("SMART ", color = PrimaryBlue, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-                        Text("WORKER", color = DarkBlue, fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(24.dp))
+            AnimatedVisibility(visible = selected) {
+                Row {
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        "Workforce Management Simplified",
-                        color = DarkBlue,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
         }
-
-        // Bottom Login Card area
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .fillMaxHeight(0.60f),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            color = CardBackground,
-            shadowElevation = 16.dp
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
-                    .verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    "Welcome Back!",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "Login to continue to your account",
-                    color = TextSecondary,
-                    fontSize = 14.sp
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Mobile Number Field
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("+91", fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(12.dp))
-                    HorizontalDivider(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .width(1.dp),
-                        color = DividerColor
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    BasicTextField(
-                        value = mobileNumber,
-                        onValueChange = { if (it.length <= 10 && it.all { char -> char.isDigit() }) mobileNumber = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = TextPrimary),
-                        decorationBox = { innerTextField ->
-                            if (mobileNumber.isEmpty()) {
-                                Text("Enter mobile number", color = TextSecondary, fontSize = 16.sp)
-                            }
-                            innerTextField()
-                        }
-                    )
-
-                    Icon(
-                        Icons.Default.Phone,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Send OTP Button
-                Button(
-                    onClick = {
-                        if (mobileNumber.length == 10) {
-                            onSendOtp(mobileNumber)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
-                ) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Send OTP",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // OR Divider
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
-                    Text(
-                        "OR",
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Text(
-                    "Login as",
-                    modifier = Modifier.align(Alignment.Start),
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    fontSize = 16.sp
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Roles Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    RoleCard(
-                        title = "Contractor",
-                        subtitle = "Manage Projects\n& Workers",
-                        iconId = R.drawable.ic_contractor,
-                        iconSize = 76,
-                        selected = selectedRole == "Contractor",
-                        onClick = { selectedRole = "Contractor" },
-                        modifier = Modifier.weight(1f)
-                    )
-                    RoleCard(
-                        title = "Supervisor",
-                        subtitle = "Supervise & Track\nWorkforce",
-                        iconId = R.drawable.ic_supervisor,
-                        iconSize = 60,
-                        selected = selectedRole == "Supervisor",
-                        onClick = { selectedRole = "Supervisor" },
-                        modifier = Modifier.weight(1f)
-                    )
-                    RoleCard(
-                        title = "Accountant",
-                        subtitle = "Manage Payroll\n& Payments",
-                        iconId = R.drawable.ic_accountant,
-                        iconSize = 76,
-                        selected = selectedRole == "Accountant",
-                        onClick = { selectedRole = "Accountant" },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Security Shield Banner
-                Surface(
-                    color = SecurityBannerBackground,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            Icons.Default.VerifiedUser,
-                            contentDescription = null,
-                            tint = PrimaryBlue,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Your data is 100% secure and protected",
-                            color = PrimaryBlue,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                // Footer
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Don't have an account? ", color = TextSecondary, fontSize = 14.sp)
-                    Text("Contact Admin", color = PrimaryBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RoleCard(
-    title: String,
-    subtitle: String,
-    iconId: Int,
-    iconSize: Int = 64,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val borderColor = if (selected) PrimaryBlue else DividerColor
-    val bgColor = if (selected) SelectedCardBackground else White
-
-    Box(modifier = modifier.clickable { onClick() }) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp, end = 6.dp)
-                .height(176.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, borderColor),
-            color = bgColor
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(84.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = iconId),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(iconSize.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    title,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
-                    fontSize = 13.sp
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    subtitle,
-                    color = TextSecondary,
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 12.sp,
-                    maxLines = 2
-                )
-            }
-        }
-
-        if (selected) {
-            Icon(
-                Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = PrimaryBlue,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(24.dp)
-                    .background(White, CircleShape)
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun LoginScreenPreview() {
-    SmartWorkerTheme {
-        LoginScreen()
     }
 }
