@@ -2,8 +2,10 @@ package com.example
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -49,7 +51,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.update.DownloadState
+import com.example.update.UpdateDialog
+import com.example.update.UpdateState
+import com.example.update.UpdateViewModel
 import com.example.ui.LocalAppContainer
 import com.example.ui.collectAsStateLifecycle
 import com.example.screens.SmartWorkerAttendanceScreen
@@ -80,6 +87,8 @@ class MainActivity : ComponentActivity() {
                     val factory = remember { VmFactory(container) }
                     val appVm: AppViewModel = viewModel(factory = factory)
                     AppRoot(appVm, factory)
+                    // OTA self-update: overlays an AlertDialog when a newer APK is hosted.
+                    UpdateGate()
                 }
             }
         }
@@ -103,6 +112,41 @@ fun AppRoot(appVm: AppViewModel, factory: VmFactory) {
         LoginScreen(appVm)
     } else {
         MainShell(appVm, factory, snackbarHost)
+    }
+}
+
+/**
+ * Checks the hosted manifest on launch and drives the OTA dialog. Renders nothing
+ * until an update is available, so it can safely overlay the whole app.
+ */
+@Composable
+private fun UpdateGate() {
+    val vm: UpdateViewModel = viewModel()
+    val updateState by vm.updateState.collectAsStateWithLifecycle()
+    val downloadState by vm.downloadState.collectAsStateWithLifecycle()
+
+    // Run the version check once, off the main thread (inside the ViewModel).
+    LaunchedEffect(Unit) { vm.checkForUpdate() }
+
+    // API 26+ install-permission round trip: open the "unknown apps" settings
+    // screen, then resume the install automatically when the user returns.
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { vm.onInstallPermissionResult() }
+
+    LaunchedEffect(downloadState) {
+        if (downloadState is DownloadState.NeedsPermission) {
+            permissionLauncher.launch(vm.installPermissionIntent())
+        }
+    }
+
+    (updateState as? UpdateState.UpdateAvailable)?.let { available ->
+        UpdateDialog(
+            update = available,
+            downloadState = downloadState,
+            onDownload = { vm.downloadAndInstall(available.manifest) },
+            onDismiss = { vm.dismissUpdate() },
+        )
     }
 }
 
