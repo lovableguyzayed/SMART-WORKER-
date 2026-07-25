@@ -188,7 +188,17 @@ fun SmartWorkerMoreScreen(
                     Text("Log Out", color = Danger, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                 }
             }
-            item { Spacer(Modifier.height(32.dp)) }
+            item { Spacer(Modifier.height(20.dp)) }
+            item {
+                Text(
+                    "Smart Worker · Version ${com.example.BuildConfig.VERSION_NAME} (build ${com.example.BuildConfig.VERSION_CODE})",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                )
+            }
+            item { Spacer(Modifier.height(28.dp)) }
         }
     }
 }

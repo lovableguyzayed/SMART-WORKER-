@@ -21,6 +21,26 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # Sign every build with ONE consistent key (from repo secrets) so OTA
+      # updates install over each other without a signature-mismatch uninstall.
+      # If the secret is absent the build falls back to the debug key (unsigned
+      # for OTA purposes), so the workflow still succeeds.
+      - name: Configure release signing
+        env:
+          KS_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KS_STORE_PW: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KS_KEY_PW: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          KS_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > release.jks
+            printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KS_STORE_PW" "$KS_ALIAS" "$KS_KEY_PW" > keystore.properties
+            echo "Release signing configured from repo secret."
+          else
+            echo "No SIGNING_KEYSTORE_BASE64 secret set — falling back to debug signing."
+          fi
+
       - name: Build APKs
         run: ./gradlew assembleDebug assembleRelease --stacktrace
 
