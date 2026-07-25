@@ -20,6 +20,13 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 
+// ── App version — the single place to bump on every release ──
+// Semantic versioning: MAJOR.MINOR.PATCH. See defaultConfig for how these
+// become versionName ("2.1.0") and versionCode (20100).
+val versionMajor = 2
+val versionMinor = 1
+val versionPatch = 0
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -31,8 +38,16 @@ android {
     // java.time is used throughout the data layer; API 26+ ships it natively.
     minSdk = 26
     targetSdk = 36
-    versionCode = 3       // ⬆️ BUMP on every release — must be strictly higher than the installed build (OTA compares this).
-    versionName = "2.1"   // ⬆️ BUMP on every release — human-readable, shown in the update dialog.
+    // ── Semantic version (MAJOR.MINOR.PATCH) ──────────────────────────────────
+    // Bump ONE of these on every release:
+    //   • PATCH → bug fixes / small tweaks      (2.1.0 → 2.1.1)
+    //   • MINOR → new features, backwards-compatible (2.1.1 → 2.2.0)
+    //   • MAJOR → breaking changes / redesigns   (2.2.0 → 3.0.0)
+    // versionName is derived as "MAJOR.MINOR.PATCH"; versionCode is derived as a
+    // single strictly-increasing Int the OTA updater and Android compare against.
+    // Keep MINOR and PATCH below 100 so the ordering never collides.
+    versionCode = versionMajor * 10000 + versionMinor * 100 + versionPatch
+    versionName = "$versionMajor.$versionMinor.$versionPatch"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

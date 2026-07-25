@@ -43,7 +43,11 @@ The manifest URL lives in `UpdateViewModel.manifestUrl` — edit it to your host
 
 ## How to ship a new version
 
-1. **Bump** `versionCode` (increment by 1) **and** `versionName` in `app/build.gradle.kts`.
+1. **Bump the version** in `app/build.gradle.kts` — change one of `versionMajor` /
+   `versionMinor` / `versionPatch` (semantic versioning). `versionName` (e.g.
+   `2.1.0`) and `versionCode` (e.g. `20100`) are derived automatically:
+   `versionCode = major*10000 + minor*100 + patch`. PATCH = fixes, MINOR = new
+   features, MAJOR = breaking/redesign. Keep MINOR and PATCH below 100.
 2. `./gradlew assembleRelease` — produces an APK signed with `release.jks`.
 3. **Upload** `app/build/outputs/apk/release/app-release.apk` to your host
    (GitHub Releases or your Flask backend).
