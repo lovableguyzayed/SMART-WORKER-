@@ -1,0 +1,8 @@
+{
+  "latestVersionCode": 3,
+  "latestVersionName": "2.1",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-3/SmartWorker-release.apk",
+  "releaseNotes": "• Redesigned Attendance and Worker Details screens\n• In-app self-update (OTA)\n• Bug fixes and performance improvements",
+  "forceUpdate": false,
+  "minSupportedVersionCode": 1
+}

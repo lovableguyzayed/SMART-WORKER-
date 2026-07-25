@@ -1,43 +1,66 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
 }
+
+// ── OTA release signing (Critical Fix #1: consistent signature = no uninstall) ──
+// Credentials live in a git-ignored root `keystore.properties`. Every release must
+// be signed with the SAME key, otherwise Android refuses to update in place.
+// See the "How to ship a new version" checklist in the repo README.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+  if (keystorePropertiesFile.exists()) FileInputStream(keystorePropertiesFile).use { load(it) }
+}
+val hasReleaseKeystore = keystorePropertiesFile.exists()
 
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
+    // ⚠️ applicationId must NEVER change once shipped. Changing it makes Android
+    //    treat the new APK as a different app (no in-place update; side-by-side install).
     applicationId = "com.aistudio.smartworker.kwzl"
     // java.time is used throughout the data layer; API 26+ ships it natively.
     minSdk = 26
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0"
+    versionCode = 3       // ⬆️ BUMP on every release — must be strictly higher than the installed build (OTA compares this).
+    versionName = "2.1"   // ⬆️ BUMP on every release — human-readable, shown in the update dialog.
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   // Signing is intentionally resilient so `assembleDebug` and `assembleRelease`
-  // both produce an installable APK on a fresh clone with zero manual setup:
-  //  - debug: uses a repo-local debug.keystore when present, otherwise the
-  //    default Android debug keystore that the SDK auto-generates.
-  //  - release: signs with the production upload key only when the keystore
-  //    file AND its passwords are present; otherwise falls back to debug
-  //    signing so the build never fails. Play Store uploads still require the
-  //    real key (KEYSTORE_PATH / STORE_PASSWORD / KEY_PASSWORD).
+  // both produce an installable APK on a fresh clone with zero manual setup.
+  // Priority for the "release" key:
+  //  1. root `keystore.properties` (the OTA production key — see Critical Fix #1),
+  //  2. env-var upload key (KEYSTORE_PATH / STORE_PASSWORD / KEY_PASSWORD, for CI),
+  //  3. fall back to debug signing so the build never fails on a keyless machine.
   val uploadKeystore = file(System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks")
   val hasUploadKey = uploadKeystore.exists() &&
     !System.getenv("STORE_PASSWORD").isNullOrEmpty() &&
     !System.getenv("KEY_PASSWORD").isNullOrEmpty()
   val localDebugKeystore = file("${rootDir}/debug.keystore")
+  val hasReleaseSigning = hasReleaseKeystore || hasUploadKey
 
   signingConfigs {
-    if (hasUploadKey) {
-      create("release") {
+    when {
+      // Preferred: production OTA key from keystore.properties.
+      hasReleaseKeystore -> create("release") {
+        storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+        storePassword = keystoreProperties.getProperty("storePassword")
+        keyAlias = keystoreProperties.getProperty("keyAlias")
+        keyPassword = keystoreProperties.getProperty("keyPassword")
+      }
+      // CI fallback: upload key via environment variables.
+      hasUploadKey -> create("release") {
         storeFile = uploadKeystore
         storePassword = System.getenv("STORE_PASSWORD")
         keyAlias = "upload"
@@ -59,17 +82,21 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = if (hasUploadKey) {
+      // Critical Fix #1: release is signed with the real "release" key when available.
+      signingConfig = if (hasReleaseSigning) {
         signingConfigs.getByName("release")
       } else {
         getByName("debug").signingConfig
       }
     }
     debug {
-      if (localDebugKeystore.exists()) {
-        signingConfig = signingConfigs.getByName("debugConfig")
+      // Critical Fix #1: sign debug with the SAME "release" key when it exists, so
+      // debug ↔ release installs on a developer device don't require an uninstall.
+      signingConfig = when {
+        hasReleaseSigning -> signingConfigs.getByName("release")
+        localDebugKeystore.exists() -> signingConfigs.getByName("debugConfig")
+        else -> getByName("debug").signingConfig // AGP's auto-generated debug keystore
       }
-      // else: AGP's built-in debug keystore is used automatically.
     }
   }
   compileOptions {
@@ -126,6 +153,7 @@ dependencies {
   implementation(libs.logging.interceptor)
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
+  implementation(libs.kotlinx.serialization.json) // OTA update manifest parsing
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
