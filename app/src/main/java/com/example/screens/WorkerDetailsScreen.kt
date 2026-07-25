@@ -1,5 +1,8 @@
 package com.example.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
@@ -22,15 +25,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.ManageAccounts
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -41,21 +51,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AttendanceRecord
+import com.example.data.model.AttendanceStatus
 import com.example.data.model.PayTypes
+import com.example.data.model.TxnTypes
 import com.example.data.model.User
 import com.example.data.model.Worker
 import com.example.data.model.WorkerTransaction
+import com.example.data.repo.AttendanceRepository
 import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
 import com.example.ui.StatusPill
@@ -77,8 +93,8 @@ import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.ui.vm.WorkerAdminViewModel
 import com.example.util.LocalImage
-import androidx.compose.material.icons.filled.Badge
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -93,6 +109,9 @@ fun SmartWorkerWorkerDetailsScreen(
     onOpenIdCard: (Long) -> Unit,
 ) {
     val container = LocalAppContainer.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
     val worker by remember(workerId) { container.workerRepository.worker(workerId) }
         .collectAsStateWithLifecycle(initialValue = null)
     val recentAttendance by remember(workerId) {
@@ -109,10 +128,31 @@ fun SmartWorkerWorkerDetailsScreen(
     val projects by adminVm.projects.collectAsStateLifecycle()
     val tasks by adminVm.tasks.collectAsStateLifecycle()
 
-    var dialog by remember { mutableStateOf<String?>(null) } // assign | promote | leave | deactivate
+    // assign | promote | leave | deactivate | payment | advance
+    var dialog by remember { mutableStateOf<String?>(null) }
+    var showMore by remember { mutableStateOf(false) }
     var toast by remember { mutableStateOf<String?>(null) }
 
     val dateFmt = DateTimeFormatter.ofPattern("dd MMM yyyy")
+
+    fun markPresentToday(w: Worker) {
+        scope.launch {
+            val r = container.attendanceRepository.mark(user, w, LocalDate.now(), AttendanceStatus.PRESENT)
+            toast = when (r) {
+                is AttendanceRepository.MarkResult.Ok -> r.message
+                is AttendanceRepository.MarkResult.Denied -> r.message
+            }
+        }
+    }
+
+    fun saveTxn(w: Worker, type: String, amount: Double, description: String) {
+        scope.launch {
+            val err = container.catalogRepository.saveTransaction(
+                WorkerTransaction(workerId = w.id, txnType = type, amount = amount, date = LocalDate.now(), description = description),
+            )
+            toast = err ?: "Saved. Payroll updates automatically."
+        }
+    }
 
     Scaffold(
         containerColor = BackgroundColor,
@@ -131,7 +171,7 @@ fun SmartWorkerWorkerDetailsScreen(
         val w = worker
         if (w == null) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                androidx.compose.material3.CircularProgressIndicator(color = PrimaryBlue)
+                CircularProgressIndicator(color = PrimaryBlue)
             }
             return@Scaffold
         }
@@ -140,35 +180,45 @@ fun SmartWorkerWorkerDetailsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { ProfileHeader(w) }
+            item { ProfileHeader(w, onCall = { dial(context, w.phone) }) }
 
-            // Admin quick actions (Flask worker_profile action bar)
+            // Quick action grid (3 × 2) — admin only, per Flask worker_profile action bar.
             if (user.isAdmin) {
                 item {
                     Column {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionTile("Edit\nWorker", Icons.Filled.ManageAccounts, PrimaryBlue, Modifier.weight(1f)) { onEdit(w.id) }
-                            ActionTile("Assign\nProject", Icons.AutoMirrored.Filled.Assignment, Purple, Modifier.weight(1f)) { dialog = "assign" }
-                            ActionTile("Promote /\nRate", Icons.AutoMirrored.Filled.TrendingUp, Success, Modifier.weight(1f)) { dialog = "promote" }
+                            ActionTile("Mark\nAttendance", Icons.Filled.HowToReg, Success, Modifier.weight(1f)) { markPresentToday(w) }
+                            ActionTile("Add\nPayment", Icons.Filled.Payments, PrimaryBlue, Modifier.weight(1f)) { dialog = "payment" }
+                            ActionTile("Add\nAdvance", Icons.Filled.AccountBalanceWallet, Warning, Modifier.weight(1f)) { dialog = "advance" }
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionTile("Adjust\nLeave", Icons.Filled.EventAvailable, Warning, Modifier.weight(1f)) { dialog = "leave" }
-                            ActionTile("Full\nReport", Icons.Filled.Description, Navy, Modifier.weight(1f)) { onOpenReport(w.id) }
-                            ActionTile("ID Card\n+ QR", Icons.Filled.Badge, PrimaryBlue, Modifier.weight(1f)) { onOpenIdCard(w.id) }
+                            ActionTile("Documents\n/ ID Card", Icons.Filled.Badge, Purple, Modifier.weight(1f)) { onOpenIdCard(w.id) }
+                            ActionTile("Edit\nWorker", Icons.Filled.ManageAccounts, Navy, Modifier.weight(1f)) { onEdit(w.id) }
+                            ActionTile("More", Icons.Filled.MoreHoriz, TextSecondary, Modifier.weight(1f)) { showMore = !showMore }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionTile(
-                                if (w.status == "active") "Deactivate" else "Reactivate",
-                                Icons.Filled.PersonOff, Danger, Modifier.weight(1f),
-                            ) { dialog = "deactivate" }
-                            Spacer(Modifier.weight(2f))
+                        if (showMore) {
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ActionTile("Assign\nProject", Icons.AutoMirrored.Filled.Assignment, Purple, Modifier.weight(1f)) { dialog = "assign" }
+                                ActionTile("Promote /\nRate", Icons.AutoMirrored.Filled.TrendingUp, Success, Modifier.weight(1f)) { dialog = "promote" }
+                                ActionTile("Adjust\nLeave", Icons.Filled.EventAvailable, Warning, Modifier.weight(1f)) { dialog = "leave" }
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ActionTile("Full\nReport", Icons.Filled.Description, Navy, Modifier.weight(1f)) { onOpenReport(w.id) }
+                                ActionTile(
+                                    if (w.status == "active") "Deactivate" else "Reactivate",
+                                    Icons.Filled.PersonOff, Danger, Modifier.weight(1f),
+                                ) { dialog = "deactivate" }
+                                Spacer(Modifier.weight(1f))
+                            }
                         }
                     }
                 }
             }
 
+            item { InfoCard("Worker Information", workerInfoRows(w)) }
             item { InfoCard("Job Information", jobRows(w)) }
 
             // Assignments (current + history)
@@ -281,6 +331,20 @@ fun SmartWorkerWorkerDetailsScreen(
 
         // ── Dialogs ─────────────────────────────────────────────────────────
         when (dialog) {
+            "payment" -> TxnQuickDialog(
+                title = "Add Payment",
+                hint = "An earning added to this worker's payroll.",
+                types = TxnTypes.EARNINGS,
+                onDismiss = { dialog = null },
+                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
+            )
+            "advance" -> TxnQuickDialog(
+                title = "Add Advance",
+                hint = "A deduction recovered from this worker's payroll.",
+                types = TxnTypes.DEDUCTIONS,
+                onDismiss = { dialog = null },
+                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
+            )
             "assign" -> AssignDialog(
                 sites = sites.map { it.id to it.name },
                 projects = projects.map { it.id to it.name },
@@ -359,7 +423,7 @@ private fun ActionTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+            Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
             Spacer(Modifier.height(4.dp))
             Text(
                 label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Navy,
@@ -384,6 +448,39 @@ private fun DetailsSection(title: String, content: @Composable androidx.compose.
             content()
         }
     }
+}
+
+@Composable
+private fun TxnQuickDialog(
+    title: String,
+    hint: String,
+    types: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (String, Double, String) -> Unit,
+) {
+    var type by remember { mutableStateOf(types.first()) }
+    var amount by remember { mutableStateOf("") }
+    var desc by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(hint, fontSize = 12.sp, color = TextSecondary)
+                SwFormDropdown(
+                    "Type",
+                    TxnTypes.LABELS[type] ?: type,
+                    types.map { TxnTypes.LABELS[it] ?: it },
+                ) { chosen -> type = types.firstOrNull { (TxnTypes.LABELS[it] ?: it) == chosen } ?: type }
+                SwFormField("Amount (₹)", amount, keyboardType = KeyboardType.Decimal) { amount = it }
+                SwFormField("Description (optional)", desc) { desc = it }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { amount.toDoubleOrNull()?.let { onSave(type, it, desc) } }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -462,7 +559,7 @@ private fun PromoteDialog(
                 SwFormField("New designation (blank = keep)", position) { position = it }
                 SwFormField(
                     "$rateLabel (blank = keep)", rate,
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                    keyboardType = KeyboardType.Decimal,
                 ) { rate = it }
                 SwFormField("Reason / notes", desc) { desc = it }
             }
@@ -491,7 +588,7 @@ private fun LeaveAdjustDialog(onDismiss: () -> Unit, onSave: (Double, String) ->
                 )
                 SwFormField(
                     "Days (e.g. 2 or -1.5)", days,
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal,
+                    keyboardType = KeyboardType.Decimal,
                 ) { days = it }
                 SwFormField("Reason", reason) { reason = it }
             }
@@ -504,7 +601,7 @@ private fun LeaveAdjustDialog(onDismiss: () -> Unit, onSave: (Double, String) ->
 }
 
 @Composable
-private fun ProfileHeader(w: Worker) {
+private fun ProfileHeader(w: Worker, onCall: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -519,7 +616,7 @@ private fun ProfileHeader(w: Worker) {
             ) {
                 LocalImage(
                     path = w.profileImage,
-                    contentDescription = "Photo of ${'$'}{w.fullName}",
+                    contentDescription = "Photo of ${w.fullName}",
                     modifier = Modifier.size(64.dp).clip(CircleShape),
                 ) {
                     Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(38.dp))
@@ -534,11 +631,33 @@ private fun ProfileHeader(w: Worker) {
                 }
                 Spacer(Modifier.size(3.dp))
                 Text("ID: ${w.workerCode} • ${w.position}", fontSize = 12.sp, color = TextSecondary)
-                Text(w.phone, fontSize = 12.sp, color = TextSecondary)
+                if (w.phone.isNotBlank()) {
+                    Spacer(Modifier.size(3.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Call, "Call ${w.fullName}", tint = PrimaryBlue, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.size(4.dp))
+                        Text(w.phone, fontSize = 12.sp, color = PrimaryBlue)
+                    }
+                }
+            }
+            if (w.phone.isNotBlank()) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(AvatarBlueBg).clickable(onClick = onCall),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Filled.Call, "Call", tint = PrimaryBlue, modifier = Modifier.size(20.dp)) }
             }
         }
     }
 }
+
+private fun workerInfoRows(w: Worker): List<Pair<String, String>> = listOf(
+    "Worker ID" to w.workerCode,
+    "Phone" to w.phone.ifBlank { "—" },
+    "Email" to w.email.ifBlank { "—" },
+    "Address" to w.address.ifBlank { "—" },
+    "Department" to w.department,
+    "Status" to if (w.status == "active") "Active" else "Inactive",
+)
 
 private fun jobRows(w: Worker): List<Pair<String, String>> {
     val rate = when (w.payType) {
@@ -548,8 +667,8 @@ private fun jobRows(w: Worker): List<Pair<String, String>> {
         else -> "₹${w.projectRate?.toInt() ?: 0} / project"
     }
     return listOf(
-        "Department" to w.department,
-        "Worker Category" to w.employeeType,
+        "Work Type" to w.employeeType,
+        "Position" to w.position,
         "Pay Type" to w.payType.replaceFirstChar { it.uppercase() },
         "Pay Rate" to rate,
         "Joining Date" to w.joinDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy")),
@@ -608,4 +727,9 @@ private fun TxnMiniRow(t: WorkerTransaction, fmt: DateTimeFormatter) {
             color = if (t.isEarning) Success else Danger,
         )
     }
+}
+
+private fun dial(context: Context, phone: String) {
+    if (phone.isBlank()) return
+    runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))) }
 }
