@@ -143,8 +143,29 @@ interface PayrollDao {
     @Query("SELECT * FROM payroll_records WHERE workerId = :workerId ORDER BY year DESC, month DESC LIMIT :limit")
     suspend fun historyForWorker(workerId: Long, limit: Int): List<PayrollRecord>
 
+    /** Monthly payroll batches (one row per generated month) for the history list. */
+    @Query(
+        "SELECT year AS year, month AS month, COUNT(*) AS workerCount, " +
+            "COALESCE(SUM(netPay), 0) AS total, " +
+            "SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) AS paidCount " +
+            "FROM payroll_records GROUP BY year, month ORDER BY year DESC, month DESC LIMIT :limit",
+    )
+    fun recentBatches(limit: Int): Flow<List<PayrollBatch>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(record: PayrollRecord): Long
+}
+
+/** Aggregated monthly payroll batch (not an entity — a query projection). */
+data class PayrollBatch(
+    val year: Int,
+    val month: Int,
+    val workerCount: Int,
+    val total: Double,
+    val paidCount: Int,
+) {
+    /** paid when every worker in the batch is paid, otherwise still processing. */
+    val status: String get() = if (workerCount > 0 && paidCount >= workerCount) "paid" else "processing"
 }
 
 @Dao

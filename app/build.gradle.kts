@@ -25,7 +25,7 @@ val hasReleaseKeystore = keystorePropertiesFile.exists()
 // become versionName ("2.1.0") and versionCode (20100).
 val versionMajor = 2
 val versionMinor = 1
-val versionPatch = 0
+val versionPatch = 2
 
 android {
   namespace = "com.example"

@@ -3,6 +3,8 @@ package com.example.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +23,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.outlined.Apartment
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CurrencyRupee
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
@@ -34,6 +37,8 @@ import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -54,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.db.PayrollBatch
 import com.example.data.model.PayTypes
 import com.example.data.model.TxnTypes
 import com.example.data.model.Worker
@@ -105,6 +111,9 @@ fun SmartWorkerPayrollScreen(
     val txns by remember(period) {
         container.catalogRepository.transactionsBetween(period.atDay(1), period.atEndOfMonth())
     }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val batches by remember { container.db.payrollDao().recentBatches(6) }
+        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val sites by container.db.siteDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
 
     var tab by remember { mutableStateOf(0) } // 0 Overview, 1 Salary, 2 Advances, 3 Deductions, 4 Payments
     var toast by remember { mutableStateOf<String?>(null) }
@@ -126,35 +135,14 @@ fun SmartWorkerPayrollScreen(
         topBar = { SwTopBar(title = "Payroll") },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            // ── Company + period header (replaces the site selector; payroll is not
-            //    site-scoped, so this shows the company and the month being viewed) ──
-            Card(
-                Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                elevation = CardDefaults.cardElevation(0.dp),
-                border = CardBorder,
-            ) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(IconBlueBg), contentAlignment = Alignment.Center) {
-                        LocalImage(company?.logo, "Company logo", Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))) {
-                            Icon(Icons.Filled.CurrencyRupee, null, tint = PrimaryBlue, modifier = Modifier.size(24.dp))
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(company?.name ?: "SmartWorker", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("Pay period", fontSize = 11.sp, color = TextSecondary)
-                    }
-                    MonthNav(Icons.Filled.ChevronLeft, "Previous month") { vm.shiftMonth(-1) }
-                    Text(
-                        period.format(java.time.format.DateTimeFormatter.ofPattern("MMM yyyy")),
-                        fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Navy,
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    )
-                    MonthNav(Icons.Filled.ChevronRight, "Next month") { vm.shiftMonth(1) }
-                }
-            }
+            // ── Site selector card (matches the design). Payroll figures are
+            //    company-wide; the site line reflects the active site when one exists. ──
+            SiteSelectorCard(
+                logo = company?.logo,
+                title = sites.firstOrNull()?.name ?: (company?.name ?: "SmartWorker"),
+                subtitle = sites.firstOrNull()?.let { "Site ID: SITE-${it.id.toString().padStart(4, '0')}" }
+                    ?: company?.address?.takeIf { it.isNotBlank() } ?: "All sites",
+            )
 
             // ── Segmented tabs ──
             val tabs = listOf("Overview", "Salary", "Advances", "Deductions", "Payments")
@@ -194,7 +182,10 @@ fun SmartWorkerPayrollScreen(
                     advancesGiven = advancesGiven,
                     totalDeductions = totals.totalDeductions,
                     rows = rows,
+                    batches = batches,
                     isAdmin = isAdmin,
+                    onSetPeriod = { vm.setPeriod(it) },
+                    onOpenBatch = { vm.setPeriod(it); tab = 1 },
                     onGenerate = { if (isAdmin) vm.generate { toast = it } else { toast = "Only an administrator can generate payroll." } },
                     onExport = { if (rows.isEmpty()) { toast = "Nothing to export yet." } else exportCsv() },
                     onQuick = { tab = it },
@@ -227,7 +218,10 @@ private fun OverviewTab(
     advancesGiven: Double,
     totalDeductions: Double,
     rows: List<PayrollRepository.PayrollRow>,
+    batches: List<PayrollBatch>,
     isAdmin: Boolean,
+    onSetPeriod: (YearMonth) -> Unit,
+    onOpenBatch: (YearMonth) -> Unit,
     onGenerate: () -> Unit,
     onExport: () -> Unit,
     onQuick: (Int) -> Unit,
@@ -238,7 +232,10 @@ private fun OverviewTab(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         item {
-            SectionHeader("Payroll Summary")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                SectionHeader("Payroll Summary")
+                PeriodDropdown(period, onSetPeriod)
+            }
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -257,6 +254,21 @@ private fun OverviewTab(
         item { UpcomingPayrollCard(period, totalWorkers, isAdmin, onGenerate) }
 
         item {
+            SectionHeader("Recent Payroll Batches")
+            Spacer(Modifier.height(12.dp))
+            if (batches.isEmpty()) {
+                Text(
+                    "No payroll generated yet. Use “Generate Payroll” to create this month’s batch.",
+                    fontSize = 13.sp, color = TextSecondary,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    batches.forEach { b -> BatchRow(b) { onOpenBatch(YearMonth.of(b.year, b.month)) } }
+                }
+            }
+        }
+
+        item {
             SectionHeader("Salary Distribution")
             Spacer(Modifier.height(12.dp))
             val daily = rows.filter { it.worker.payType == PayTypes.DAILY }
@@ -272,20 +284,116 @@ private fun OverviewTab(
         item {
             SectionHeader("Quick Payroll Actions")
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuickAction("Generate\nPayroll", Icons.Filled.CalendarMonth, PrimaryBlue, Modifier.weight(1f), onGenerate)
-                QuickAction("Pay\nSalary", Icons.Filled.PriceCheck, Success, Modifier.weight(1f)) { onQuick(1) }
-                QuickAction("Advances", Icons.Filled.AccountBalanceWallet, Purple, Modifier.weight(1f)) { onQuick(2) }
-                QuickAction("Deductions", Icons.Filled.RemoveCircleOutline, Danger, Modifier.weight(1f)) { onQuick(3) }
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuickAction("Export\nReport", Icons.Filled.Upload, Navy, Modifier.weight(1f), onExport)
-                QuickAction("Payment\nHistory", Icons.Filled.History, PrimaryBlue, Modifier.weight(1f)) { onQuick(4) }
-                Spacer(Modifier.weight(2f))
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                QuickAction("Generate\nPayroll", Icons.Filled.CalendarMonth, PrimaryBlue) { onGenerate() }
+                QuickAction("Pay\nSalary", Icons.Filled.PriceCheck, Success) { onQuick(1) }
+                QuickAction("Add\nAdvance", Icons.Filled.AccountBalanceWallet, Purple) { onQuick(2) }
+                QuickAction("Add\nDeduction", Icons.Filled.RemoveCircleOutline, Danger) { onQuick(3) }
+                QuickAction("Export\nReport", Icons.Filled.Upload, Navy) { onExport() }
+                QuickAction("Payment\nHistory", Icons.Filled.History, PrimaryBlue) { onQuick(4) }
             }
         }
         item { Spacer(Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun PeriodDropdown(period: YearMonth, onSet: (YearMonth) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val now = YearMonth.now()
+    val fmt = java.time.format.DateTimeFormatter.ofPattern("MMM yyyy")
+    val label = when (period) {
+        now -> "This Month"
+        now.minusMonths(1) -> "Last Month"
+        else -> period.format(fmt)
+    }
+    Box {
+        Row(
+            Modifier.clip(RoundedCornerShape(8.dp)).clickable { open = true }.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(label, fontSize = 13.sp, color = TextSecondary)
+            Icon(Icons.Filled.ArrowDropDown, "Change period", tint = TextSecondary, modifier = Modifier.size(18.dp))
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            (0..5).forEach { i ->
+                val ym = now.minusMonths(i.toLong())
+                val t = when (i) { 0 -> "This Month"; 1 -> "Last Month"; else -> ym.format(fmt) }
+                DropdownMenuItem(text = { Text(t) }, onClick = { onSet(ym); open = false })
+            }
+        }
+    }
+}
+
+@Composable
+private fun BatchRow(b: PayrollBatch, onClick: () -> Unit) {
+    val ym = YearMonth.of(b.year, b.month)
+    val monthShort = ym.format(java.time.format.DateTimeFormatter.ofPattern("MMM")).uppercase()
+    val monthLong = ym.format(java.time.format.DateTimeFormatter.ofPattern("MMMM yyyy"))
+    val lastDay = ym.atEndOfMonth().dayOfMonth
+    val paid = b.status == "paid"
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = CardBorder,
+    ) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(BackgroundColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(monthShort, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue)
+                    Text(lastDay.toString(), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Navy)
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("$monthLong Payroll", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Navy)
+                Text("${b.workerCount} Workers", fontSize = 11.5.sp, color = TextSecondary)
+            }
+            Text(money(b.total), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Success)
+            Spacer(Modifier.width(8.dp))
+            StatusPill(if (paid) "Paid" else "Processing", if (paid) Success else Warning)
+            Icon(Icons.Filled.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun SiteSelectorCard(logo: String?, title: String, subtitle: String) {
+    Card(
+        Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = CardBorder,
+    ) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(IconBlueBg), contentAlignment = Alignment.Center) {
+                LocalImage(logo, "Site", Modifier.size(56.dp).clip(RoundedCornerShape(12.dp))) {
+                    Icon(Icons.Outlined.Apartment, null, tint = PrimaryBlue, modifier = Modifier.size(28.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Row(
+                Modifier.clip(RoundedCornerShape(10.dp)).border(1.dp, DividerColor, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Switch Site", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Navy)
+                Icon(Icons.Filled.ArrowDropDown, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+            }
+        }
     }
 }
 
@@ -448,7 +556,7 @@ private fun DistCard(label: String, count: Int, amount: Double, iconBg: Color, i
 }
 
 @Composable
-private fun QuickAction(label: String, icon: ImageVector, tint: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun QuickAction(label: String, icon: ImageVector, tint: Color, modifier: Modifier = Modifier.width(76.dp), onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = modifier.height(76.dp),
@@ -516,12 +624,4 @@ private fun PayrollRow(
     }
 }
 
-@Composable
-private fun MonthNav(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    Box(
-        Modifier.size(32.dp).clip(CircleShape).background(CardBackground).border(1.dp, DividerColor, CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, desc, tint = Navy, modifier = Modifier.size(18.dp)) }
-}
-
-private fun money(v: Double): String = "₹" + String.format(Locale("en", "IN"), "%,.0f", v)
+private fun money(v: Double): String = "₹" + String.format(Locale.forLanguageTag("en-IN"), "%,.0f", v)
