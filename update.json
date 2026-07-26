@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 3,
-  "latestVersionName": "2.1",
-  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-3/SmartWorker-release.apk",
-  "releaseNotes": "• Redesigned Attendance and Worker Details screens\n• In-app self-update (OTA)\n• Bug fixes and performance improvements",
+  "latestVersionCode": 20102,
+  "latestVersionName": "2.1.2",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-9/SmartWorker-release.apk",
+  "releaseNotes": "• Redesigned Payroll screen — summary cards, recent batches, salary distribution, quick actions\n• Redesigned Attendance & Worker Details screens\n• In-app self-update (OTA)\n• Bug fixes and improvements",
   "forceUpdate": false,
   "minSupportedVersionCode": 1
 }
