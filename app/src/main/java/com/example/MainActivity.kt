@@ -266,6 +266,8 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                     "manage" -> com.example.screens.ManageScreen(
                         vm = viewModel(factory = factory),
                         onBack = { currentScreen = "more" },
+                        onOpenCompany = { currentScreen = "company_settings" },
+                        onOpenAttendanceUsers = { currentScreen = "attendance_users" },
                     )
                     "closures" -> com.example.screens.ClosuresScreen(
                         vm = viewModel(factory = factory),

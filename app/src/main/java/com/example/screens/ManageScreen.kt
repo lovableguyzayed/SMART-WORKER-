@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Delete
@@ -31,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -77,9 +79,15 @@ import java.time.LocalDate
  * Delete is guarded by reference counts; archive is always available.
  */
 @Composable
-fun ManageScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+fun ManageScreen(
+    vm: SettingsViewModel,
+    onBack: () -> Unit,
+    onOpenCompany: () -> Unit = {},
+    onOpenAttendanceUsers: () -> Unit = {},
+) {
     var tab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Sites", "Projects", "Tasks", "Departments")
+    // Same six sections as the web app's settings screen.
+    val tabs = listOf("Sites", "Projects", "Tasks", "Departments", "Company", "Users")
 
     val sites by vm.sites.collectAsStateLifecycle()
     val projects by vm.projects.collectAsStateLifecycle()
@@ -97,7 +105,7 @@ fun ManageScreen(vm: SettingsViewModel, onBack: () -> Unit) {
         containerColor = BackgroundColor,
         topBar = {
             SwTopBar(
-                title = "Manage",
+                title = "Settings",
                 leading = {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Navy,
@@ -107,17 +115,20 @@ fun ManageScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAdd = true },
-                containerColor = PrimaryBlue,
-                contentColor = White,
-                shape = CircleShape,
-            ) { Icon(Icons.Filled.Add, "Add ${tabs[tab].dropLast(1)}") }
+            if (tab <= 3) {
+                FloatingActionButton(
+                    onClick = { showAdd = true },
+                    containerColor = PrimaryBlue,
+                    contentColor = White,
+                    shape = CircleShape,
+                ) { Icon(Icons.Filled.Add, "Add ${tabs[tab].dropLast(1)}") }
+            }
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            TabRow(
+            ScrollableTabRow(
                 selectedTabIndex = tab,
+                edgePadding = 0.dp,
                 containerColor = CardBackground,
                 contentColor = PrimaryBlue,
                 indicator = { positions ->
@@ -193,6 +204,16 @@ fun ManageScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                     onEdit = { editDept = it },
                     onArchive = { vm.saveDepartment(it.copy(status = if (it.status == "archived") "active" else "archived")) },
                     onDelete = { vm.deleteDepartment(it) },
+                )
+                4 -> SectionLink(
+                    title = "Company Profile",
+                    subtitle = "Name, address, contact details, GST and logo used across payslips and ID cards.",
+                    onOpen = onOpenCompany,
+                )
+                5 -> SectionLink(
+                    title = "Attendance Users",
+                    subtitle = "Accounts that may mark attendance, and the sites or projects each one can see.",
+                    onOpen = onOpenAttendanceUsers,
                 )
             }
         }
@@ -456,4 +477,29 @@ private fun DepartmentDialog(existing: Department?, onDismiss: () -> Unit, onSav
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** Settings section that lives on its own screen (Company, Attendance Users). */
+@Composable
+private fun SectionLink(title: String, subtitle: String, onOpen: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Card(
+            onClick = onOpen,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            elevation = CardDefaults.cardElevation(0.dp),
+            border = CardBorder,
+        ) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy)
+                    Spacer(Modifier.height(4.dp))
+                    Text(subtitle, fontSize = 12.5.sp, color = TextSecondary)
+                }
+                Spacer(Modifier.width(12.dp))
+                Icon(Icons.Filled.ChevronRight, "Open", tint = TextSecondary, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
 }
