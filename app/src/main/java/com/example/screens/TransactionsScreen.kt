@@ -107,13 +107,27 @@ fun TransactionsScreen(vm: TransactionsViewModel, onBack: () -> Unit) {
                     Icon(Icons.Filled.ChevronRight, "Next", tint = Navy)
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Earnings: ₹${"%,.0f".format(totals.first)}", fontSize = 13.sp, color = Success, fontWeight = FontWeight.SemiBold)
-                Text("Deductions: ₹${"%,.0f".format(totals.second)}", fontSize = 13.sp, color = Danger, fontWeight = FontWeight.SemiBold)
+            // Totals — extra payments vs advances/deductions (web parity)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                TotalTile("Extra Payments", totals.first, Success, Modifier.weight(1f))
+                TotalTile("Advances / Deductions", totals.second, Danger, Modifier.weight(1f))
             }
+            Text(
+                "All transactions automatically update ${period.format(fmt)} payroll — extra payments are added, advances and deductions are recovered from net pay.",
+                fontSize = 11.5.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
 
             if (txns.isEmpty()) {
-                EmptyState(Icons.Filled.AccountBalanceWallet, "No transactions", "Add an advance, bonus or deduction with the + button.")
+                EmptyState(
+                    Icons.Filled.AccountBalanceWallet,
+                    "No transactions",
+                    "Record advances, loans, bonuses and deductions for ${period.format(fmt)}.",
+                )
             } else {
                 val workerName = workers.associate { it.id to it.fullName }
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -233,6 +247,28 @@ private fun <T> ChipsFlow(labels: List<String>, values: List<T>, selected: T?, o
             ) {
                 Text(label, fontSize = 12.sp, color = if (isSel) White else Navy, fontWeight = FontWeight.Medium)
             }
+        }
+    }
+}
+
+/** Month total tile — mirrors the web transactions summary cards. */
+@Composable
+private fun TotalTile(
+    label: String,
+    amount: Double,
+    tint: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier,
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        elevation = CardDefaults.cardElevation(0.dp),
+        border = CardBorder,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
+            Text("₹${"%,.2f".format(amount)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = tint)
+            Text(label, fontSize = 11.sp, color = TextSecondary, maxLines = 1)
         }
     }
 }

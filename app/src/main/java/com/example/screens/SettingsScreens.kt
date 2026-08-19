@@ -471,6 +471,16 @@ fun ClosuresScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () -> Unit) 
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Scheduled Closures",
+                            fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Text("${closures.size} upcoming", fontSize = 12.sp, color = TextSecondary)
+                    }
+                }
                 items(closures, key = { it.id }) { c ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
