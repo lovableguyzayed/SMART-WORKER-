@@ -195,7 +195,7 @@ fun ManageScreen(
                     onArchive = { vm.saveTask(it.copy(status = if (it.status == "archived") "active" else "archived")) },
                     onDelete = { vm.deleteTask(it) },
                 )
-                else -> EntityList(
+                3 -> EntityList(
                     items = departments,
                     empty = "No departments yet. Tap + to add one.",
                     key = { it.id },
