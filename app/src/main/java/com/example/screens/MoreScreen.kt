@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
@@ -165,6 +166,7 @@ fun SmartWorkerMoreScreen(
                         if (isAdmin) {
                             add(Triple("Company Settings", Icons.Filled.Settings, PrimaryBlue) to "company_settings")
                             add(Triple("Manage Sites & Projects", Icons.Filled.Tune, Indigo500) to "manage")
+                            add(Triple("Assignments", Icons.Filled.AccountTree, Success) to "assignments")
                             add(Triple("Attendance Users", Icons.Filled.Person, Purple) to "attendance_users")
                             add(Triple("Closure Days", Icons.Filled.EventBusy, Warning) to "closures")
                             add(Triple("Transactions", Icons.Filled.Payments, Teal500) to "transactions")

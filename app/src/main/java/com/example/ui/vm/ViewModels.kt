@@ -45,6 +45,7 @@ class VmFactory(private val c: AppContainer) : ViewModelProvider.Factory {
         modelClass.isAssignableFrom(WorkerFormViewModel::class.java) -> WorkerFormViewModel(c)
         modelClass.isAssignableFrom(WorkerAdminViewModel::class.java) -> WorkerAdminViewModel(c)
         modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(c)
+        modelClass.isAssignableFrom(AssignmentsViewModel::class.java) -> AssignmentsViewModel(c)
         else -> throw IllegalArgumentException("Unknown ViewModel ${modelClass.name}")
     } as T
 }

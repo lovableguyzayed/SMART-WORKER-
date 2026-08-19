@@ -176,7 +176,7 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
             "id_card" -> "worker_details"
             "payslip" -> "payroll"
             "quick_mark" -> "attendance"
-            "transactions", "manage", "closures", "attendance_users", "company_settings", "reports" -> "more"
+            "transactions", "manage", "closures", "attendance_users", "company_settings", "reports", "assignments" -> "more"
             "notifications" -> "home"
             else -> "home"
         }
@@ -262,6 +262,10 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
                         vm = viewModel(factory = factory),
                         workerId = reportWorkerId ?: 0L,
                         onBack = { currentScreen = if (detailWorkerId != null) "worker_details" else "reports" },
+                    )
+                    "assignments" -> com.example.screens.AssignmentsScreen(
+                        vm = viewModel(factory = factory),
+                        onBack = { currentScreen = "more" },
                     )
                     "manage" -> com.example.screens.ManageScreen(
                         vm = viewModel(factory = factory),

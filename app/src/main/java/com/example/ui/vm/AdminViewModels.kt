@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -385,4 +387,97 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
     fun toggleUser(id: Long) = viewModelScope.launch { c.authRepository.toggleUserStatus(id); say("User status updated.") }
     fun deleteUser(id: Long) = viewModelScope.launch { c.authRepository.deleteUser(id); say("User deleted.") }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Assignments — worker ↔ site / project / task, with filters (web parity)
+// ─────────────────────────────────────────────────────────────────────────────
+class AssignmentsViewModel(private val c: AppContainer) : ViewModel() {
+
+    data class Row(
+        val worker: com.example.data.model.Worker,
+        val assignment: com.example.data.model.ProjectAssignment?,
+        val siteName: String?,
+        val projectName: String?,
+        val taskName: String?,
+    )
+
+    /** 0 = All, 1 = Assigned, 2 = Unassigned */
+    private val _filter = MutableStateFlow(0)
+    val filter: StateFlow<Int> = _filter.asStateFlow()
+    private val _siteFilter = MutableStateFlow<Long?>(null)
+    val siteFilter: StateFlow<Long?> = _siteFilter.asStateFlow()
+    private val _projectFilter = MutableStateFlow<Long?>(null)
+    val projectFilter: StateFlow<Long?> = _projectFilter.asStateFlow()
+
+    fun setFilter(i: Int) { _filter.value = i }
+    fun setSite(id: Long?) { _siteFilter.value = id }
+    fun setProject(id: Long?) { _projectFilter.value = id }
+
+    val sites: StateFlow<List<com.example.data.model.Site>> =
+        c.catalogRepository.sites.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val projects: StateFlow<List<com.example.data.model.Project>> =
+        c.catalogRepository.projects.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val tasks: StateFlow<List<com.example.data.model.WorkTask>> =
+        c.catalogRepository.tasks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val rows: StateFlow<List<Row>> = combine(
+        c.workerRepository.activeWorkers,
+        c.db.assignmentDao().all(),
+        sites, projects, tasks,
+    ) { workers, assignments, siteList, projectList, taskList ->
+        val active = assignments.filter { it.status == "active" }.associateBy { it.workerId }
+        workers.map { w ->
+            val a = active[w.id]
+            Row(
+                worker = w,
+                assignment = a,
+                siteName = a?.siteId?.let { id -> siteList.firstOrNull { it.id == id }?.name },
+                projectName = a?.projectId?.let { id -> projectList.firstOrNull { it.id == id }?.name },
+                taskName = a?.taskId?.let { id -> taskList.firstOrNull { it.id == id }?.name },
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** Rows after the status / site / project filters are applied. */
+    val visibleRows: StateFlow<List<Row>> = combine(
+        rows, _filter, _siteFilter, _projectFilter,
+    ) { all, status, siteId, projectId ->
+        all.filter { r ->
+            val statusOk = when (status) {
+                1 -> r.assignment != null
+                2 -> r.assignment == null
+                else -> true
+            }
+            val siteOk = siteId == null || r.assignment?.siteId == siteId
+            val projectOk = projectId == null || r.assignment?.projectId == projectId
+            statusOk && siteOk && projectOk
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val assignedCount: StateFlow<Int> = rows
+        .map { list -> list.count { it.assignment != null } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun assign(
+        workerId: Long,
+        projectId: Long?,
+        siteId: Long?,
+        taskId: Long?,
+        startDate: java.time.LocalDate,
+        notes: String,
+        onDone: (String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            c.workerRepository.assign(workerId, projectId, siteId, taskId, startDate, notes)
+            onDone("Assignment saved.")
+        }
+    }
+
+    fun endAssignment(assignmentId: Long, onDone: (String) -> Unit) {
+        viewModelScope.launch {
+            c.workerRepository.endAssignment(assignmentId)
+            onDone("Assignment ended.")
+        }
+    }
 }
