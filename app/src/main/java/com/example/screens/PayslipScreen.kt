@@ -162,7 +162,7 @@ fun PayslipScreen(
 
                 Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = { PayslipPdfExporter.exportAndShare(context, state.company, row, period) },
+                    onClick = { PayslipPdfExporter.exportAndShare(context, state.company, row, period, state.records) },
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),

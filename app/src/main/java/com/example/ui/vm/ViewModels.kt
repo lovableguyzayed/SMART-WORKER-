@@ -390,6 +390,8 @@ class PayslipViewModel(private val c: AppContainer) : ViewModel() {
     data class SlipState(
         val row: PayrollRepository.PayrollRow? = null,
         val company: CompanySetting? = null,
+        /** The period's attendance records — drives the payslip calendar. */
+        val records: List<AttendanceRecord> = emptyList(),
         val loading: Boolean = true,
     )
 
@@ -406,7 +408,9 @@ class PayslipViewModel(private val c: AppContainer) : ViewModel() {
             }
             val row = c.payrollRepository.slip(worker, period.monthValue, period.year)
             val company = c.db.companyDao().settings().firstOrNull()
-            _state.value = SlipState(row = row, company = company, loading = false)
+            val records = c.db.attendanceDao()
+                .forWorkerBetween(workerId, period.atDay(1), period.atEndOfMonth())
+            _state.value = SlipState(row = row, company = company, records = records, loading = false)
         }
     }
 }

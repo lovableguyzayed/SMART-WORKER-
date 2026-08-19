@@ -210,7 +210,7 @@ private fun SectionTitle(title: String) {
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = TextSecondary,
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
     )
 }
 
