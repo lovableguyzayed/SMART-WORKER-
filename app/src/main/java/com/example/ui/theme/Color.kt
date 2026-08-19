@@ -3,9 +3,9 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ── Single source of truth for all Smart Worker colour tokens ──
-val PrimaryBlue = Color(0xFF0D5BFF)
-val PrimaryBlueDark = Color(0xFF0A46C4)
-val DarkBlue = Color(0xFF001B4E)
+val PrimaryBlue = Color(0xFF007BFF)   // web app --primary
+val PrimaryBlueDark = Color(0xFF0062CC)
+val DarkBlue = Color(0xFF001F3F)      // web app gradient start
 val Navy = Color(0xFF0F172A)
 val White = Color(0xFFFFFFFF)
 

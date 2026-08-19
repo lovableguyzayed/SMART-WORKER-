@@ -6,13 +6,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,13 +23,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -45,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,8 +70,9 @@ import com.example.screens.HomeScreen
 import com.example.screens.LoginScreen
 import com.example.screens.NotificationsScreen
 import com.example.screens.TransactionsScreen
+import com.example.ui.theme.DarkBlue
+import com.example.ui.theme.DividerColor
 import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.SelectedCardBackground
 import com.example.ui.theme.SmartWorkerTheme
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.White
@@ -162,7 +165,7 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
     val currentUser by appVm.currentUser.collectAsStateLifecycle()
     val user = currentUser ?: return
 
-    val isTab = currentScreen in listOf("home", "workers", "attendance", "payroll", "more")
+    val isTab = currentScreen in listOf("home", "workers", "attendance", "payroll", "more", "quick_mark")
 
     // System back mirrors the on-screen back arrows instead of exiting the app.
     androidx.activity.compose.BackHandler(enabled = !isTab || currentScreen != "home") {
@@ -303,48 +306,87 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
 
 @Composable
 fun UnifiedBottomNavBar(currentTab: String, onTabSelected: (String) -> Unit) {
-    Surface(color = White, shadowElevation = 12.dp, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 10.dp)
-                .height(56.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+    // Floating rounded nav frame with a centred gradient "Scan QR" action —
+    // mirrors the web app's .app-bottom-nav-frame / .app-nav-fab.
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(82.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = White,
+            shadowElevation = 12.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, DividerColor),
         ) {
-            AnimatedTab(Icons.Filled.Home, "Home", currentTab == "home") { onTabSelected("home") }
-            AnimatedTab(Icons.Filled.Groups, "Workers", currentTab == "workers") { onTabSelected("workers") }
-            AnimatedTab(Icons.Filled.CalendarToday, "Attendance", currentTab == "attendance") { onTabSelected("attendance") }
-            AnimatedTab(Icons.Filled.Payments, "Payroll", currentTab == "payroll") { onTabSelected("payroll") }
-            AnimatedTab(Icons.Filled.MoreHoriz, "More", currentTab == "more") { onTabSelected("more") }
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NavTab(Icons.Filled.Home, "Home", currentTab == "home", Modifier.weight(1f)) { onTabSelected("home") }
+                NavTab(Icons.Filled.Groups, "Workers", currentTab == "workers", Modifier.weight(1f)) { onTabSelected("workers") }
+                ScanFab(currentTab == "quick_mark") { onTabSelected("quick_mark") }
+                NavTab(Icons.Filled.Payments, "Payroll", currentTab == "payroll", Modifier.weight(1f)) { onTabSelected("payroll") }
+                NavTab(Icons.Filled.MoreHoriz, "More", currentTab == "more", Modifier.weight(1f)) { onTabSelected("more") }
+            }
         }
     }
 }
 
 @Composable
-private fun AnimatedTab(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg by animateColorAsState(if (selected) SelectedCardBackground else White, label = "bg")
-    val fg by animateColorAsState(if (selected) PrimaryBlue else TextSecondary, label = "fg")
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(bg)
+private fun NavTab(
+    icon: ImageVector,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val fg by animateColorAsState(if (selected) DarkBlue else TextSecondary, label = "fg")
+    val iconBg by animateColorAsState(
+        if (selected) PrimaryBlue.copy(alpha = 0.14f) else Color.Transparent,
+        label = "iconBg",
+    )
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(15.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = if (selected) 14.dp else 12.dp, vertical = 10.dp),
+            .padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(iconBg),
+            contentAlignment = Alignment.Center,
+        ) { Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(21.dp)) }
+        Spacer(Modifier.height(3.dp))
+        Text(
+            label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Centre action — opens Quick Mark (scan-to-attend), the app's primary action. */
+@Composable
+private fun ScanFab(selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .padding(horizontal = 4.dp)
+            .size(width = 60.dp, height = 64.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Brush.linearGradient(listOf(DarkBlue, PrimaryBlue)))
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(24.dp))
-            AnimatedVisibility(visible = selected) {
-                Row {
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        label, color = fg, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Filled.QrCodeScanner, "Scan QR", tint = White,
+                modifier = Modifier.size(if (selected) 27.dp else 25.dp),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text("Scan QR", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
