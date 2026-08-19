@@ -51,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +73,7 @@ import com.example.data.model.User
 import com.example.data.model.Worker
 import com.example.data.model.WorkerTransaction
 import com.example.data.repo.AttendanceRepository
+import com.example.data.repo.PayrollRepository
 import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
 import com.example.ui.StatusPill
@@ -97,6 +99,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.YearMonth
 
 @Composable
 fun SmartWorkerWorkerDetailsScreen(
@@ -122,6 +125,13 @@ fun SmartWorkerWorkerDetailsScreen(
     }.collectAsStateWithLifecycle(initialValue = emptyList())
 
     LaunchedEffect(workerId) { adminVm.setWorker(workerId) }
+
+    // This month's payroll slip powers the attendance-summary and leave cards.
+    val slip by produceState<PayrollRepository.PayrollRow?>(initialValue = null, workerId, worker) {
+        val target = worker ?: return@produceState
+        val ym = YearMonth.now()
+        value = runCatching { container.payrollRepository.slip(target, ym.monthValue, ym.year) }.getOrNull()
+    }
     val assignments by adminVm.assignments.collectAsStateLifecycle()
     val modifications by adminVm.modifications.collectAsStateLifecycle()
     val sites by adminVm.sites.collectAsStateLifecycle()
@@ -218,8 +228,36 @@ fun SmartWorkerWorkerDetailsScreen(
                 }
             }
 
-            item { InfoCard("Worker Information", workerInfoRows(w)) }
-            item { InfoCard("Job Information", jobRows(w)) }
+            // This month's attendance + leave ledger (web app parity).
+            slip?.let { s ->
+                item {
+                    DetailsSection("Attendance Summary — ${YearMonth.now().format(DateTimeFormatter.ofPattern("MMMM yyyy"))}") {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            MiniStat("Present", s.attendance.presentDays, Success, Modifier.weight(1f))
+                            MiniStat("Absent", s.attendance.absentDays, Danger, Modifier.weight(1f))
+                            MiniStat("Late", s.attendance.lateDays, Warning, Modifier.weight(1f))
+                            MiniStat("Leave", s.attendance.leaveDays, Purple, Modifier.weight(1f))
+                            MiniStat("Paid", s.pay.paidDays, PrimaryBlue, Modifier.weight(1f))
+                        }
+                    }
+                }
+                s.pay.leaveBalance?.let { lb ->
+                    item {
+                        DetailsSection("Leave Balance (since joining)") {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                MiniStatText("Quota/mo", lb.monthlyQuota.toString(), Modifier.weight(1f))
+                                MiniStatText("Carried", "%.1f".format(lb.balanceBefore), Modifier.weight(1f))
+                                MiniStatText("Used", lb.usedThisMonth.toString(), Modifier.weight(1f))
+                                MiniStatText("Remaining", "%.1f".format(lb.balanceAfter), Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            item { InfoCard("Personal Information", workerInfoRows(w)) }
+            item { InfoCard("Work Information", jobRows(w)) }
+            item { InfoCard("Payment Information", paymentRows(w)) }
 
             // Assignments (current + history)
             item {
@@ -648,6 +686,53 @@ private fun ProfileHeader(w: Worker, onCall: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun MiniStat(label: String, value: Int, color: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = 0.10f)).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(value.toString(), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(label, fontSize = 10.sp, color = color, maxLines = 1)
+    }
+}
+
+@Composable
+private fun MiniStatText(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier.clip(RoundedCornerShape(12.dp)).background(PrimaryBlue.copy(alpha = 0.08f)).padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
+        Text(label, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+    }
+}
+
+/** Pay policy detail — the web profile's "Payment Information" card. */
+private fun paymentRows(w: Worker): List<Pair<String, String>> = buildList {
+    add("Pay Type" to w.payType.replaceFirstChar { it.uppercase() })
+    when (w.payType) {
+        PayTypes.DAILY -> add("Daily Rate" to "₹${(w.dailyRate ?: 0.0).toInt()}")
+        PayTypes.MONTHLY -> {
+            add("Monthly Salary" to "₹${(w.monthlySalary ?: 0.0).toInt()}")
+            add("Working Days / month" to w.monthlyWorkingDays.toString())
+        }
+        PayTypes.HOURLY -> {
+            add("Hourly Rate" to "₹${(w.hourlyRate ?: 0.0).toInt()}")
+            add("Standard Hours / day" to w.standardWorkingHours.toString())
+        }
+        else -> add("Project Rate" to (w.projectRate?.let { "₹${it.toInt()}" } ?: "—"))
+    }
+    add("Overtime" to if (w.overtimeEnabled) "₹${(w.overtimeRate ?: 0.0).toInt()} per ${w.overtimeType}" else "Disabled")
+    add(
+        "Late Policy" to
+            if (w.latePolicyEnabled) "₹${(w.lateDeductionPerUnit ?: 0.0).toInt()} per ${w.lateDeductionType} · ${w.lateGraceMinutes}m grace"
+            else "Disabled",
+    )
+    add("Leave Quota" to if (w.leavePolicyEnabled) "${w.allowedLeavesPerMonth} day(s) / month" else "Disabled")
+    if (w.closureExtraPayEnabled) add("Closure Extra" to "${w.closureExtraPercentage.toInt()}%")
 }
 
 private fun workerInfoRows(w: Worker): List<Pair<String, String>> = listOf(
