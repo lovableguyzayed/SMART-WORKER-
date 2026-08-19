@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 20104,
-  "latestVersionName": "2.1.4",
-  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-11/SmartWorker-release.apk",
-  "releaseNotes": "• Redesigned employee ID card — gradient badge with photo, QR and details\n• Reworked Payroll screen\n• Redesigned Attendance & Worker Details\n• In-app self-update (OTA)",
+  "latestVersionCode": 20106,
+  "latestVersionName": "2.1.6",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-13/SmartWorker-release.apk",
+  "releaseNotes": "• Redesigned Dashboard, Workers, Worker profile, Profile and Settings\n• New Assignments screen — assign, transfer and end assignments\n• Floating navigation with a centre Scan QR action\n• Transactions totals and closures summary\n• Gradient employee ID card and redesigned payslip PDF",
   "forceUpdate": false,
   "minSupportedVersionCode": 1
 }
