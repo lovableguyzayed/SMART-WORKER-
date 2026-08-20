@@ -46,16 +46,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.User
+import com.example.data.model.AttendanceStatus
 import com.example.data.repo.AttendanceRepository
 import com.example.ui.CardBorder
 import com.example.ui.StatusPill
 import com.example.ui.SwTopBar
+import com.example.ui.LocalAppContainer
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.collectAsStateLifecycle
 import com.example.ui.theme.AvatarBlueBg
 import com.example.ui.theme.BackgroundColor
@@ -80,6 +84,9 @@ import java.time.format.DateTimeFormatter
 fun QuickMarkScreen(vm: QuickMarkViewModel, user: User, onBack: () -> Unit) {
     var code by remember { mutableStateOf("") }
     var scanning by remember { mutableStateOf(false) }
+    val container = LocalAppContainer.current
+    val todayRecords by container.attendanceRepository.recordsOn(java.time.LocalDate.now())
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val state by vm.state.collectAsStateLifecycle()
     val busy by vm.busy.collectAsStateLifecycle()
     val message by vm.message.collectAsStateLifecycle()
@@ -107,6 +114,21 @@ fun QuickMarkScreen(vm: QuickMarkViewModel, user: User, onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .imePadding(),
         ) {
+            // Today's totals — mirrors the web scanner's stat strip.
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val present = todayRecords.count { it.status == AttendanceStatus.PRESENT }
+                val late = todayRecords.count { it.status == AttendanceStatus.LATE }
+                val absent = todayRecords.count { it.status == AttendanceStatus.ABSENT }
+                val open = todayRecords.count { it.checkInTime != null && it.checkOutTime == null }
+                ScanStat("Present", present, Success, Modifier.weight(1f))
+                ScanStat("Late", late, Warning, Modifier.weight(1f))
+                ScanStat("Absent", absent, Danger, Modifier.weight(1f))
+                ScanStat("Open", open, PrimaryBlue, Modifier.weight(1f))
+            }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -288,5 +310,25 @@ private fun ActionButton(
         Icon(icon, null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Compact today-total tile for the scanner header. */
+@Composable
+private fun ScanStat(
+    label: String,
+    value: Int,
+    tint: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(tint.copy(alpha = 0.10f))
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(value.toString(), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = tint)
+        Text(label, fontSize = 10.5.sp, color = tint, maxLines = 1)
     }
 }

@@ -66,6 +66,11 @@ fun NotificationsScreen(vm: NotificationsViewModel, onBack: () -> Unit) {
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            Text(
+                "Attendance activity from all sites",
+                fontSize = 12.5.sp, color = TextSecondary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
             if (notifications.isNotEmpty()) {
                 Row(
                     Modifier.fillMaxWidth().clickable { vm.markAllRead() }.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -77,7 +82,7 @@ fun NotificationsScreen(vm: NotificationsViewModel, onBack: () -> Unit) {
                 }
             }
             if (notifications.isEmpty()) {
-                EmptyState(Icons.Filled.NotificationsNone, "No notifications", "Attendance and system alerts will appear here.")
+                EmptyState(Icons.Filled.NotificationsNone, "No notifications", "Attendance marked by site users will appear here.")
             } else {
                 LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
                     items(notifications, key = { it.id }) { n -> NotificationRow(n, fmt) }
