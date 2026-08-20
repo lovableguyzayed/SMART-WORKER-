@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 20106,
-  "latestVersionName": "2.1.6",
-  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-13/SmartWorker-release.apk",
-  "releaseNotes": "• Redesigned Dashboard, Workers, Worker profile, Profile and Settings\n• New Assignments screen — assign, transfer and end assignments\n• Floating navigation with a centre Scan QR action\n• Transactions totals and closures summary\n• Gradient employee ID card and redesigned payslip PDF",
+  "latestVersionCode": 20107,
+  "latestVersionName": "2.1.7",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-14/SmartWorker-release.apk",
+  "releaseNotes": "• Redesigned sign-in screen\n• Scanner now shows today's Present / Late / Absent / Open totals\n• Worker report gains an attendance calendar and a Save PDF export\n• Clearer sections in the worker form\n• Includes the full redesign of Dashboard, Workers, Profile, Settings and Assignments",
   "forceUpdate": false,
   "minSupportedVersionCode": 1
 }
