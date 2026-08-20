@@ -126,7 +126,7 @@ fun WorkerFormScreen(
         ) {
             Spacer(Modifier.height(12.dp))
 
-            FormCard("Identity") {
+            FormCard("Basic Details") {
                 // Worker photo (Flask profile-image upload port)
                 val context = LocalContext.current
                 val photoPicker = rememberLauncherForActivityResult(
@@ -175,7 +175,7 @@ fun WorkerFormScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            FormCard("Job") {
+            FormCard("Work Details") {
                 FormField("Designation *", form.position) { v -> vm.update { it.copy(position = v) } }
                 FormDropdown(
                     label = "Department *",
@@ -192,7 +192,7 @@ fun WorkerFormScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            FormCard("Pay type") {
+            FormCard("Payment Settings") {
                 PayTypeSelector(form.payType) { v -> vm.update { it.copy(payType = v) } }
                 Spacer(Modifier.height(12.dp))
                 when (form.payType) {
@@ -309,6 +309,7 @@ private fun MonthlySection(vm: WorkerFormViewModel, form: WorkerFormViewModel.Fo
 
 @Composable
 private fun ShiftFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.FormState) {
+    SubHeader("Working Hours")
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             FormField("Shift start (HH:mm)", form.startTime) { v -> vm.update { it.copy(startTime = v) } }
@@ -321,6 +322,7 @@ private fun ShiftFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.FormS
 
 @Composable
 private fun OvertimeFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.FormState) {
+    SubHeader("Overtime Settings")
     SwitchRow("Overtime", "Pay extra for time worked beyond the shift.", form.overtimeEnabled) { v ->
         vm.update { it.copy(overtimeEnabled = v) }
     }
@@ -338,6 +340,7 @@ private fun OvertimeFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.Fo
 
 @Composable
 private fun LatePolicyFields(vm: WorkerFormViewModel, form: WorkerFormViewModel.FormState) {
+    SubHeader("Late Policy Settings")
     SwitchRow("Late policy", "Deduct pay for late check-ins after grace time.", form.latePolicyEnabled) { v ->
         vm.update { it.copy(latePolicyEnabled = v) }
     }
@@ -504,4 +507,16 @@ private fun PayTypeSelector(selected: String, onSelect: (String) -> Unit) {
             ) { Text(labels[type] ?: type, fontSize = 12.sp) }
         }
     }
+}
+
+/** Small group label inside a form card — mirrors the reference's sub-sections. */
+@Composable
+private fun SubHeader(title: String) {
+    Text(
+        title,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = TextSecondary,
+        modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
+    )
 }
