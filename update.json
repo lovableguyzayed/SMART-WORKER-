@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 20107,
-  "latestVersionName": "2.1.7",
-  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-14/SmartWorker-release.apk",
-  "releaseNotes": "• Redesigned sign-in screen\n• Scanner now shows today's Present / Late / Absent / Open totals\n• Worker report gains an attendance calendar and a Save PDF export\n• Clearer sections in the worker form\n• Includes the full redesign of Dashboard, Workers, Profile, Settings and Assignments",
+  "latestVersionCode": 20108,
+  "latestVersionName": "2.1.8",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-15/SmartWorker-release.apk",
+  "releaseNotes": "• Settings now edits Company details and Attendance Users inline, in their own tabs\n• Payroll's Switch Site actually works — pick a site and the worker list, totals, advances, deductions and payroll generation all follow it\n• CSV export is named after the selected site",
   "forceUpdate": false,
   "minSupportedVersionCode": 1
 }
