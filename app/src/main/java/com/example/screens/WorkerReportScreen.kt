@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.AttendanceRecord
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AttendanceStatus
 import com.example.ui.CardBorder
 import com.example.ui.SwTopBar
@@ -54,6 +56,7 @@ import com.example.ui.theme.Warning
 import com.example.ui.theme.TextSecondary
 import com.example.ui.vm.WorkerAdminViewModel
 import com.example.util.CsvExporter
+import com.example.util.WorkerReportPdfExporter
 
 /** 6-month worker performance & pay report (Flask worker_report port). */
 @Composable
@@ -72,6 +75,7 @@ fun WorkerReportScreen(
 
     // This month's records drive the attendance calendar.
     val container = LocalAppContainer.current
+    val company by container.catalogRepository.company.collectAsStateWithLifecycle(initialValue = null)
     val calendarRecords by produceState<List<AttendanceRecord>>(emptyList(), workerId) {
         val ym = java.time.YearMonth.now()
         value = runCatching {
@@ -125,6 +129,17 @@ fun WorkerReportScreen(
                                     fontSize = 12.sp, color = TextSecondary,
                                 )
                             }
+                            Icon(
+                                Icons.Filled.PictureAsPdf, "Save report PDF", tint = PrimaryBlue,
+                                modifier = Modifier.size(24.dp).clickable {
+                                    WorkerReportPdfExporter.exportAndShare(
+                                        context,
+                                        company,
+                                        report.months.map { it.label to it.row },
+                                    )
+                                },
+                            )
+                            Spacer(Modifier.size(14.dp))
                             Icon(
                                 Icons.Filled.IosShare, "Export report CSV", tint = PrimaryBlue,
                                 modifier = Modifier.size(24.dp).clickable {
