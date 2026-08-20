@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -20,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Delete
@@ -83,8 +81,6 @@ import java.time.LocalDate
 fun ManageScreen(
     vm: SettingsViewModel,
     onBack: () -> Unit,
-    onOpenCompany: () -> Unit = {},
-    onOpenAttendanceUsers: () -> Unit = {},
 ) {
     var tab by remember { mutableIntStateOf(0) }
     // Same six sections as the web app's settings screen.
@@ -206,16 +202,10 @@ fun ManageScreen(
                     onArchive = { vm.saveDepartment(it.copy(status = if (it.status == "archived") "active" else "archived")) },
                     onDelete = { vm.deleteDepartment(it) },
                 )
-                4 -> SectionLink(
-                    title = "Company Profile",
-                    subtitle = "Name, address, contact details, GST and logo used across payslips and ID cards.",
-                    onOpen = onOpenCompany,
-                )
-                5 -> SectionLink(
-                    title = "Attendance Users",
-                    subtitle = "Accounts that may mark attendance, and the sites or projects each one can see.",
-                    onOpen = onOpenAttendanceUsers,
-                )
+                // Company and Users are the same editors the web settings page
+                // embeds inline — hosted here without their own top bar.
+                4 -> CompanySettingsScreen(vm, onBack = {}, embedded = true)
+                5 -> AttendanceUsersScreen(vm, onBack = {}, embedded = true)
             }
         }
     }
@@ -252,12 +242,15 @@ fun ManageScreen(
         )
     }
 
-    message?.let { msg ->
-        AlertDialog(
-            onDismissRequest = vm::clearMessage,
-            confirmButton = { TextButton(onClick = vm::clearMessage) { Text("OK") } },
-            text = { Text(msg) },
-        )
+    // Tabs 4/5 host screens that surface `vm.message` themselves — don't double up.
+    if (tab <= 3) {
+        message?.let { msg ->
+            AlertDialog(
+                onDismissRequest = vm::clearMessage,
+                confirmButton = { TextButton(onClick = vm::clearMessage) { Text("OK") } },
+                text = { Text(msg) },
+            )
+        }
     }
 }
 
@@ -478,29 +471,4 @@ private fun DepartmentDialog(existing: Department?, onDismiss: () -> Unit, onSav
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
-}
-
-/** Settings section that lives on its own screen (Company, Attendance Users). */
-@Composable
-private fun SectionLink(title: String, subtitle: String, onOpen: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-        Card(
-            onClick = onOpen,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            elevation = CardDefaults.cardElevation(0.dp),
-            border = CardBorder,
-        ) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-                    Spacer(Modifier.height(4.dp))
-                    Text(subtitle, fontSize = 12.5.sp, color = TextSecondary)
-                }
-                Spacer(Modifier.width(12.dp))
-                Icon(Icons.Filled.ChevronRight, "Open", tint = TextSecondary, modifier = Modifier.size(20.dp))
-            }
-        }
-    }
 }

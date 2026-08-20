@@ -113,21 +113,26 @@ fun SmartWorkerPayrollScreen(
     }.collectAsStateWithLifecycle(initialValue = emptyList())
     val batches by remember { container.db.payrollDao().recentBatches(6) }
         .collectAsStateWithLifecycle(initialValue = emptyList())
-    val sites by container.db.siteDao().all().collectAsStateWithLifecycle(initialValue = emptyList())
+    val sites by vm.sites.collectAsStateLifecycle()
+    val siteId by vm.siteId.collectAsStateLifecycle()
+    val activeSite = sites.firstOrNull { it.id == siteId }
 
     var tab by remember { mutableStateOf(0) } // 0 Overview, 1 Salary, 2 Advances, 3 Deductions, 4 Payments
     var toast by remember { mutableStateOf<String?>(null) }
 
     val workersById = remember(rows) { rows.associate { it.worker.id to it.worker } }
-    val advances = txns.filter { it.status == "active" && it.txnType in listOf("advance", "cash_advance") }
-    val deductions = txns.filter { it.status == "active" && !it.isEarning }
+    // When a site is selected the ledger tabs follow the same roster as the rows.
+    val scopedTxns = if (siteId == null) txns else txns.filter { it.workerId in workersById }
+    val advances = scopedTxns.filter { it.status == "active" && it.txnType in listOf("advance", "cash_advance") }
+    val deductions = scopedTxns.filter { it.status == "active" && !it.isEarning }
 
     val paidAmount = rows.filter { it.status == "paid" }.sumOf { it.pay.estimatedPay }
     val pendingAmount = rows.filter { it.status != "paid" }.sumOf { it.pay.estimatedPay }
     val advancesGiven = advances.sumOf { it.amount }
 
     fun exportCsv() {
-        CsvExporter.share(context, "payroll_$period.csv", CsvExporter.payrollCsv(rows, period))
+        val scope = activeSite?.name?.replace(Regex("[^A-Za-z0-9]+"), "_")?.let { "_$it" } ?: ""
+        CsvExporter.share(context, "payroll_$period$scope.csv", CsvExporter.payrollCsv(rows, period))
     }
 
     Scaffold(
@@ -135,13 +140,16 @@ fun SmartWorkerPayrollScreen(
         topBar = { SwTopBar(title = "Payroll") },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            // ── Site selector card (matches the design). Payroll figures are
-            //    company-wide; the site line reflects the active site when one exists. ──
+            // ── Site selector. Picking a site scopes every figure below —
+            //    workers, totals, generation — to that site's assignments. ──
             SiteSelectorCard(
                 logo = company?.logo,
-                title = sites.firstOrNull()?.name ?: (company?.name ?: "SmartWorker"),
-                subtitle = sites.firstOrNull()?.let { "Site ID: SITE-${it.id.toString().padStart(4, '0')}" }
-                    ?: company?.address?.takeIf { it.isNotBlank() } ?: "All sites",
+                title = activeSite?.name ?: (company?.name ?: "SmartWorker"),
+                subtitle = activeSite?.let { "Site ID: SITE-${it.id.toString().padStart(4, '0')}" }
+                    ?: "All sites · company-wide payroll",
+                sites = sites,
+                selectedId = siteId,
+                onSelect = { vm.setSite(it) },
             )
 
             // ── Segmented tabs ──
@@ -183,6 +191,7 @@ fun SmartWorkerPayrollScreen(
                     totalDeductions = totals.totalDeductions,
                     rows = rows,
                     batches = batches,
+                    siteScoped = siteId != null,
                     isAdmin = isAdmin,
                     onSetPeriod = { vm.setPeriod(it) },
                     onOpenBatch = { vm.setPeriod(it); tab = 1 },
@@ -219,6 +228,8 @@ private fun OverviewTab(
     totalDeductions: Double,
     rows: List<PayrollRepository.PayrollRow>,
     batches: List<PayrollBatch>,
+    /** Saved batches are stored company-wide, so say so while a site filter is on. */
+    siteScoped: Boolean,
     isAdmin: Boolean,
     onSetPeriod: (YearMonth) -> Unit,
     onOpenBatch: (YearMonth) -> Unit,
@@ -254,7 +265,7 @@ private fun OverviewTab(
         item { UpcomingPayrollCard(period, totalWorkers, isAdmin, onGenerate) }
 
         item {
-            SectionHeader("Recent Payroll Batches")
+            SectionHeader(if (siteScoped) "Recent Payroll Batches (all sites)" else "Recent Payroll Batches")
             Spacer(Modifier.height(12.dp))
             if (batches.isEmpty()) {
                 Text(
@@ -367,7 +378,15 @@ private fun BatchRow(b: PayrollBatch, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SiteSelectorCard(logo: String?, title: String, subtitle: String) {
+private fun SiteSelectorCard(
+    logo: String?,
+    title: String,
+    subtitle: String,
+    sites: List<com.example.data.model.Site>,
+    selectedId: Long?,
+    onSelect: (Long?) -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
     Card(
         Modifier.fillMaxWidth().padding(16.dp, 12.dp, 16.dp, 8.dp),
         shape = RoundedCornerShape(16.dp),
@@ -386,12 +405,43 @@ private fun SiteSelectorCard(logo: String?, title: String, subtitle: String) {
                 Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(subtitle, fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Row(
-                Modifier.clip(RoundedCornerShape(10.dp)).border(1.dp, DividerColor, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Switch Site", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Navy)
-                Icon(Icons.Filled.ArrowDropDown, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+            Box {
+                Row(
+                    Modifier.clip(RoundedCornerShape(10.dp))
+                        .border(1.dp, DividerColor, RoundedCornerShape(10.dp))
+                        .clickable { open = true }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Switch Site", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Navy)
+                    Icon(Icons.Filled.ArrowDropDown, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                }
+                DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "All sites",
+                                fontSize = 14.sp,
+                                fontWeight = if (selectedId == null) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selectedId == null) PrimaryBlue else Navy,
+                            )
+                        },
+                        onClick = { onSelect(null); open = false },
+                    )
+                    sites.forEach { s ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    s.name,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (selectedId == s.id) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selectedId == s.id) PrimaryBlue else Navy,
+                                )
+                            },
+                            onClick = { onSelect(s.id); open = false },
+                        )
+                    }
+                }
             }
         }
     }

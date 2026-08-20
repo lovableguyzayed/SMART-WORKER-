@@ -92,7 +92,12 @@ import com.example.util.LocalImage
 //  COMPANY SETTINGS  (branding shown on payslips / PDF exports)
 // ═════════════════════════════════════════════════════════════════════════════
 @Composable
-fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () -> Unit) {
+fun CompanySettingsScreen(
+    vm: com.example.ui.vm.SettingsViewModel,
+    onBack: () -> Unit,
+    /** When hosted inside the Settings tabs the screen drops its own top bar. */
+    embedded: Boolean = false,
+) {
     val company by vm.company.collectAsStateLifecycle()
     val message by vm.message.collectAsStateLifecycle()
 
@@ -119,15 +124,17 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
     Scaffold(
         containerColor = BackgroundColor,
         topBar = {
-            SwTopBar(
-                title = "Company Settings",
-                leading = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Navy,
-                        modifier = Modifier.size(24.dp).clickable(onClick = onBack),
-                    )
-                },
-            )
+            if (!embedded) {
+                SwTopBar(
+                    title = "Company Settings",
+                    leading = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Navy,
+                            modifier = Modifier.size(24.dp).clickable(onClick = onBack),
+                        )
+                    },
+                )
+            }
         },
     ) { padding ->
         Column(
@@ -218,7 +225,12 @@ fun CompanySettingsScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
 //  ATTENDANCE USERS  (authorized helpers scoped to sites/projects)
 // ═════════════════════════════════════════════════════════════════════════════
 @Composable
-fun AttendanceUsersScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () -> Unit) {
+fun AttendanceUsersScreen(
+    vm: com.example.ui.vm.SettingsViewModel,
+    onBack: () -> Unit,
+    /** When hosted inside the Settings tabs the screen drops its own top bar. */
+    embedded: Boolean = false,
+) {
     val users by vm.attendanceUsers.collectAsStateLifecycle()
     val sites by vm.sites.collectAsStateLifecycle()
     val projects by vm.projects.collectAsStateLifecycle()
@@ -231,15 +243,17 @@ fun AttendanceUsersScreen(vm: com.example.ui.vm.SettingsViewModel, onBack: () ->
     Scaffold(
         containerColor = BackgroundColor,
         topBar = {
-            SwTopBar(
-                title = "Attendance Users",
-                leading = {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Navy,
-                        modifier = Modifier.size(24.dp).clickable(onClick = onBack),
-                    )
-                },
-            )
+            if (!embedded) {
+                SwTopBar(
+                    title = "Attendance Users",
+                    leading = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Navy,
+                            modifier = Modifier.size(24.dp).clickable(onClick = onBack),
+                        )
+                    },
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(

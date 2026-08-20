@@ -27,15 +27,25 @@ class PayrollRepository(private val db: AppDatabase) {
     )
 
     /** Build one payroll row per active worker for the given month, computing
-     *  the full pay summary from attendance, transactions, closures & projects. */
-    suspend fun buildRows(month: Int, year: Int): Pair<List<PayrollRow>, PayrollTotals> {
+     *  the full pay summary from attendance, transactions, closures & projects.
+     *
+     *  @param siteId when non-null, only workers posted to that site during the
+     *  period are included — either through a direct site assignment or through
+     *  a project that belongs to the site.
+     */
+    suspend fun buildRows(month: Int, year: Int, siteId: Long? = null): Pair<List<PayrollRow>, PayrollTotals> {
         val ym = YearMonth.of(year, month)
         val start = ym.atDay(1)
         val end = ym.atEndOfMonth()
-        val workers = db.workerDao().activeOnce()
         val projectsById = db.projectDao().allOnce().associateBy { it.id }
         val allAssignments = db.assignmentDao().allOnce().groupBy { it.workerId }
         val closures = db.closureDao().betweenDates(start, end)
+        val workers = db.workerDao().activeOnce().filter { w ->
+            siteId == null || (allAssignments[w.id] ?: emptyList()).any { a ->
+                overlaps(a.startDate, a.endDate, start, end) &&
+                    (a.siteId == siteId || a.projectId?.let { projectsById[it]?.siteId } == siteId)
+            }
+        }
 
         val rows = mutableListOf<PayrollRow>()
         var totalGross = 0.0; var totalDeductions = 0.0; var totalNet = 0.0
@@ -84,9 +94,18 @@ class PayrollRepository(private val db: AppDatabase) {
         return rows to totals
     }
 
-    /** Persist the computed payroll for the month (keeps existing 'paid' status). */
-    suspend fun generate(month: Int, year: Int): Int {
-        val (rows, _) = buildRows(month, year)
+    /** True when an assignment's [start, end] window touches the payroll period. */
+    private fun overlaps(
+        from: LocalDate,
+        to: LocalDate?,
+        periodStart: LocalDate,
+        periodEnd: LocalDate,
+    ): Boolean = from <= periodEnd && (to == null || to >= periodStart)
+
+    /** Persist the computed payroll for the month (keeps existing 'paid' status).
+     *  Honours the same site filter as [buildRows]. */
+    suspend fun generate(month: Int, year: Int, siteId: Long? = null): Int {
+        val (rows, _) = buildRows(month, year, siteId)
         for (row in rows) {
             val existing = db.payrollDao().find(row.worker.id, month, year)
             val record = (existing ?: PayrollRecord(

@@ -8,6 +8,7 @@ import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.CompanySetting
 import com.example.data.model.Notification
+import com.example.data.model.Site
 import com.example.data.model.User
 import com.example.data.model.Worker
 import com.example.data.model.WorkerTransaction
@@ -252,6 +253,13 @@ class PayrollViewModel(private val c: AppContainer) : ViewModel() {
     private val _period = MutableStateFlow(YearMonth.now())
     val period: StateFlow<YearMonth> = _period.asStateFlow()
 
+    /** null = every site (company-wide payroll). */
+    private val _siteId = MutableStateFlow<Long?>(null)
+    val siteId: StateFlow<Long?> = _siteId.asStateFlow()
+
+    val sites: StateFlow<List<Site>> = c.catalogRepository.sites
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val _rows = MutableStateFlow<List<PayrollRepository.PayrollRow>>(emptyList())
     val rows: StateFlow<List<PayrollRepository.PayrollRow>> = _rows.asStateFlow()
     private val _totals = MutableStateFlow(PayrollRepository.PayrollTotals(0.0, 0.0, 0.0, 0, 0, 0))
@@ -264,10 +272,19 @@ class PayrollViewModel(private val c: AppContainer) : ViewModel() {
     fun setPeriod(ym: YearMonth) { _period.value = ym; refresh() }
     fun shiftMonth(months: Long) { _period.value = _period.value.plusMonths(months); refresh() }
 
+    /** Scope every figure on the screen to one site; null restores company-wide. */
+    fun setSite(id: Long?) {
+        if (_siteId.value == id) return
+        _siteId.value = id
+        refresh()
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
-            val (rows, totals) = c.payrollRepository.buildRows(_period.value.monthValue, _period.value.year)
+            val (rows, totals) = c.payrollRepository.buildRows(
+                _period.value.monthValue, _period.value.year, _siteId.value,
+            )
             _rows.value = rows
             _totals.value = totals
             _loading.value = false
@@ -276,9 +293,12 @@ class PayrollViewModel(private val c: AppContainer) : ViewModel() {
 
     fun generate(onDone: (String) -> Unit) {
         viewModelScope.launch {
-            val count = c.payrollRepository.generate(_period.value.monthValue, _period.value.year)
+            val count = c.payrollRepository.generate(
+                _period.value.monthValue, _period.value.year, _siteId.value,
+            )
             refresh()
-            onDone("Payroll generated for $count worker(s).")
+            val scope = _siteId.value?.let { id -> sites.value.firstOrNull { it.id == id }?.name }
+            onDone("Payroll generated for $count worker(s)" + (scope?.let { " at $it." } ?: "."))
         }
     }
 
