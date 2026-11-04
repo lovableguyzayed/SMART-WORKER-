@@ -21,6 +21,7 @@ import com.example.data.model.PayTypes
 import com.example.data.model.User
 import com.example.data.model.Worker
 import com.example.screens.DashboardContent
+import com.example.screens.WorkersContent
 import com.example.ui.MeterRow
 import com.example.ui.PillChip
 import com.example.ui.SectionHeader
@@ -37,6 +38,7 @@ import com.example.ui.theme.Sun
 import com.example.ui.theme.Surface1
 import com.example.ui.theme.Volt
 import com.example.ui.vm.DashboardViewModel
+import com.example.ui.vm.WorkersViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.time.LocalDate
@@ -54,9 +56,12 @@ import org.robolectric.annotation.GraphicsMode
  * Record with:  ./gradlew testDebugUnitTest -Proborazzi.test.record=true
  * Output:       app/build/outputs/roborazzi/
  */
+// Robolectric 4.16 ships no SDK 36 runtime, and leaving `sdk` unset makes it
+// default to the app's targetSdk — which throws before any test runs. Pin to
+// the newest SDK it does support.
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = RobolectricDeviceQualifiers.Pixel7)
+@Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class UiScreenshotTest {
 
     @get:Rule
@@ -158,7 +163,29 @@ class UiScreenshotTest {
     }
 
     @Test
-    fun designSystem() = shot("03-design-system") {
+    fun workers() = shot("03-workers") {
+        WorkersContent(
+            workers = listOf(
+                worker(1, "Suresh Patil", "MA001"),
+                worker(2, "Anita Deshmukh", "MA002"),
+                worker(3, "Imran Shaikh", "CA014"),
+                worker(4, "Vikram Rathod", "EL007").copy(status = "inactive"),
+                worker(5, "Priya Nair", "MA009"),
+                worker(6, "Joseph D'Souza", "PL003"),
+            ),
+            search = "",
+            tab = 0,
+            counts = WorkersViewModel.Counts(all = 48, active = 44, inactive = 4),
+            isAdmin = true,
+            onSearch = {},
+            onTab = {},
+            onOpenWorker = {},
+            onAddWorker = {},
+        )
+    }
+
+    @Test
+    fun designSystem() = shot("04-design-system") {
         Column(
             Modifier.fillMaxSize().background(Ink).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),

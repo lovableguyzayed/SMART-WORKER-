@@ -27,7 +27,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Workspaces
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -226,7 +226,7 @@ internal fun DashboardContent(
                         add(ActionSpec("Scan QR", "Mark by worker ID", Icons.Filled.QrCodeScanner, Flame, White, "quick_mark"))
                         add(ActionSpec("Attendance", "Mark or review", Icons.Filled.HowToReg, Forest, White, "attendance"))
                         if (user.isAdmin) {
-                            add(ActionSpec("Payroll", "Wages & payslips", Icons.Filled.ReceiptLong, Cream, OnBright, "payroll"))
+                            add(ActionSpec("Payroll", "Wages & payslips", Icons.AutoMirrored.Filled.ReceiptLong, Cream, OnBright, "payroll"))
                             add(ActionSpec("Add worker", "New record", Icons.Filled.PersonAdd, Surface1, OnDark, "worker_form"))
                             add(ActionSpec("Transactions", "Advances & bonuses", Icons.Filled.Payments, Surface1, OnDark, "transactions"))
                             add(ActionSpec("Reports", "Export & analyse", Icons.Filled.Workspaces, Surface1, OnDark, "reports"))

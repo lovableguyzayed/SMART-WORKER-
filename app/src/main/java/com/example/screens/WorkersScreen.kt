@@ -1,7 +1,6 @@
 package com.example.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -23,15 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -40,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -50,16 +44,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.PayTypes
 import com.example.data.model.Worker
-import com.example.ui.CardBorder
+import com.example.ui.EmptyState
+import com.example.ui.StatTile
+import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
-import com.example.ui.theme.BackgroundColor
-import com.example.ui.theme.CardBackground
-import com.example.ui.theme.DarkBlue
-import com.example.ui.theme.Navy
-import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.SubtleDivider
-import com.example.ui.theme.Success
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.Coral
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
+import com.example.ui.theme.Mint
+import com.example.ui.theme.OnBright
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
+import com.example.ui.theme.Purple
+import com.example.ui.theme.Sun
+import com.example.ui.theme.Surface1
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
+import com.example.ui.theme.Volt
 import com.example.ui.theme.White
 import com.example.ui.vm.WorkersViewModel
 import com.example.util.LocalImage
@@ -67,9 +70,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Workers directory — mirrors the web app's `workers.html`: gradient header
- * with a translucent search/filter card, then one rounded card per worker
- * showing photo + status badge, designation, pay rate, phone and join date.
+ * Workers — roster headline, search, status filters, then one card per worker.
+ * Each card carries a colour drawn from the worker's own code, so the list
+ * reads as a colour-blocked board rather than a grey column.
  */
 @Composable
 fun SmartWorkerWorkersScreen(
@@ -83,36 +86,126 @@ fun SmartWorkerWorkersScreen(
     val tab by vm.tab.collectAsStateLifecycle()
     val counts by vm.counts.collectAsStateLifecycle()
 
-    Scaffold(containerColor = BackgroundColor) { padding ->
+    WorkersContent(
+        workers = workers,
+        search = search,
+        tab = tab,
+        counts = counts,
+        isAdmin = isAdmin,
+        onSearch = vm::setSearch,
+        onTab = vm::setTab,
+        onOpenWorker = onOpenWorker,
+        onAddWorker = onAddWorker,
+    )
+}
+
+/** Presentation half — state in, callbacks out, so it renders from fixtures. */
+@Composable
+internal fun WorkersContent(
+    workers: List<Worker>,
+    search: String,
+    tab: Int,
+    counts: WorkersViewModel.Counts,
+    isAdmin: Boolean,
+    onSearch: (String) -> Unit,
+    onTab: (Int) -> Unit,
+    onOpenWorker: (Long) -> Unit,
+    onAddWorker: () -> Unit,
+) {
+    Scaffold(containerColor = Ink) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                WorkersHeader(
-                    search = search,
-                    onSearch = vm::setSearch,
-                    tab = tab,
-                    counts = counts,
-                    onTab = vm::setTab,
-                    isAdmin = isAdmin,
-                    onAddWorker = onAddWorker,
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Roster", style = SwType.Caption, color = OnDarkMuted)
+                        Text("Workers", style = SwType.Headline.copy(fontSize = 26.sp), color = OnDark)
+                    }
+                    if (isAdmin) {
+                        Row(
+                            Modifier
+                                .clip(CircleShape)
+                                .background(Flame)
+                                .clickable(onClick = onAddWorker)
+                                .padding(horizontal = 15.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(Icons.Filled.PersonAdd, null, tint = White, modifier = Modifier.size(17.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("Add", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = White)
+                        }
+                    }
+                }
+            }
+
+            // ── Roster split ──
+            item {
+                Row(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StatTile(
+                        counts.active.toString(), "Active",
+                        Modifier.weight(1f).height(96.dp), container = Lime,
+                    )
+                    StatTile(
+                        counts.inactive.toString(), "Inactive",
+                        Modifier.weight(1f).height(96.dp), container = Surface1,
+                    )
+                    StatTile(
+                        counts.all.toString(), "Total",
+                        Modifier.weight(1f).height(96.dp), container = Volt,
+                    )
+                }
+            }
+
+            // ── Search ──
+            item {
+                SearchField(
+                    value = search,
+                    onValueChange = onSearch,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
+            }
+
+            // ── Filters ──
+            item {
+                Row(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterPill("All", counts.all, tab == 0) { onTab(0) }
+                    FilterPill("Active", counts.active, tab == 1) { onTab(1) }
+                    FilterPill("Inactive", counts.inactive, tab == 2) { onTab(2) }
+                }
             }
 
             if (workers.isEmpty()) {
                 item {
-                    Text(
-                        if (search.isBlank()) "No workers yet. Tap “Add Worker” to create the first record."
-                        else "No workers match “$search”.",
-                        fontSize = 13.sp, color = TextSecondary,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                    EmptyState(
+                        Icons.Filled.Groups,
+                        if (search.isBlank()) "No workers yet" else "No match",
+                        if (search.isBlank()) {
+                            "Tap Add to create the first record."
+                        } else {
+                            "Nothing matches “$search”."
+                        },
                     )
                 }
             } else {
                 items(workers, key = { it.id }) { worker ->
-                    WorkerCard(worker, Modifier.padding(horizontal = 16.dp)) { onOpenWorker(worker.id) }
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        WorkerCard(worker) { onOpenWorker(worker.id) }
+                    }
                 }
             }
         }
@@ -120,209 +213,167 @@ fun SmartWorkerWorkersScreen(
 }
 
 @Composable
-private fun WorkersHeader(
-    search: String,
-    onSearch: (String) -> Unit,
-    tab: Int,
-    counts: WorkersViewModel.Counts,
-    onTab: (Int) -> Unit,
-    isAdmin: Boolean,
-    onAddWorker: () -> Unit,
-) {
-    Box(
-        Modifier
+private fun SearchField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp))
-            .background(Brush.linearGradient(listOf(PrimaryBlue, Color(0xFF1E3A8A), DarkBlue)))
-            .statusBarsPadding()
-            .padding(16.dp),
+            .height(48.dp)
+            .clip(CircleShape)
+            .background(Surface3)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Workers", color = White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Manage Employee Records", color = White.copy(alpha = 0.9f), fontSize = 13.sp)
-                }
-                if (isAdmin) {
-                    Row(
-                        Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(White.copy(alpha = 0.2f))
-                            .border(1.dp, White.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                            .clickable(onClick = onAddWorker)
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Filled.Add, null, tint = White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add Worker", color = White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
+        Icon(Icons.Filled.Search, null, tint = OnDarkMuted, modifier = Modifier.size(19.dp))
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f)) {
+            if (value.isEmpty()) {
+                Text("Search name, ID or phone", style = SwType.Body, color = OnDarkFaint)
             }
-
-            Spacer(Modifier.height(16.dp))
-            // Translucent search + filter card
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(White.copy(alpha = 0.15f))
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(White.copy(alpha = 0.2f))
-                        .border(1.dp, White.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 11.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Filled.Search, null, tint = White.copy(alpha = 0.75f), modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Box(Modifier.weight(1f)) {
-                        if (search.isEmpty()) {
-                            Text("Search by name, ID, or phone…", color = White.copy(alpha = 0.7f), fontSize = 13.5.sp)
-                        }
-                        BasicTextField(
-                            value = search,
-                            onValueChange = onSearch,
-                            singleLine = true,
-                            textStyle = TextStyle(color = White, fontSize = 13.5.sp),
-                            cursorBrush = SolidColor(White),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                // Status filter chips
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "All (${counts.all})" to 0,
-                        "Active (${counts.active})" to 1,
-                        "Inactive (${counts.inactive})" to 2,
-                    ).forEach { (label, index) ->
-                        val selected = tab == index
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(11.dp))
-                                .background(if (selected) White else White.copy(alpha = 0.16f))
-                                .border(1.dp, White.copy(alpha = if (selected) 0f else 0.3f), RoundedCornerShape(11.dp))
-                                .clickable { onTab(index) }
-                                .padding(vertical = 9.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                label,
-                                color = if (selected) PrimaryBlue else White,
-                                fontSize = 12.sp,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                }
-            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = SwType.Body.copy(color = OnDark),
+                cursorBrush = SolidColor(Flame),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (value.isNotEmpty()) {
+            Icon(
+                Icons.Filled.Close, "Clear search", tint = OnDarkMuted,
+                modifier = Modifier.size(18.dp).clickable { onValueChange("") },
+            )
         }
     }
 }
 
 @Composable
-private fun WorkerCard(worker: Worker, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val active = worker.status == "active"
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
+private fun FilterPill(label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(if (selected) OnDark else Surface3)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Text(
+            label,
+            fontSize = 12.5.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            color = if (selected) OnBright else OnDarkMuted,
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            count.toString(),
+            fontSize = 12.5.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) OnBright.copy(alpha = 0.55f) else OnDarkFaint,
+        )
+    }
+}
+
+@Composable
+private fun WorkerCard(worker: Worker, onClick: () -> Unit) {
+    val accent = accentFor(worker.workerCode.ifBlank { worker.fullName })
+    val active = worker.status == "active"
+    SwCard(Modifier.fillMaxWidth(), onClick = onClick) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar with status badge
-                Box(Modifier.size(64.dp)) {
+                Box(Modifier.size(56.dp)) {
                     Box(
-                        Modifier.size(64.dp).clip(RoundedCornerShape(18.dp))
-                            .background(Brush.linearGradient(listOf(PrimaryBlue, DarkBlue))),
+                        Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(accent),
                         contentAlignment = Alignment.Center,
                     ) {
-                        LocalImage(worker.profileImage, null, Modifier.size(64.dp).clip(RoundedCornerShape(18.dp))) {
+                        LocalImage(
+                            worker.profileImage, null,
+                            Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)),
+                        ) {
                             Text(
                                 worker.fullName.take(1).uppercase(Locale.US),
-                                color = White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                                color = OnBright, fontSize = 21.sp, fontWeight = FontWeight.Bold,
                             )
                         }
                     }
-                    Box(
-                        Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp)
-                            .size(23.dp).clip(CircleShape).background(White),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    if (!active) {
                         Box(
-                            Modifier.size(19.dp).clip(CircleShape)
-                                .background(if (active) Success else TextSecondary),
+                            Modifier.align(Alignment.BottomEnd)
+                                .size(17.dp).clip(CircleShape).background(Surface1),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(
-                                if (active) Icons.Filled.Check else Icons.Filled.Pause,
-                                if (active) "Active" else "Inactive",
-                                tint = White, modifier = Modifier.size(12.dp),
+                            Box(Modifier.size(10.dp).clip(CircleShape).background(OnDarkFaint))
+                        }
+                    }
+                }
+                Spacer(Modifier.width(13.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        worker.fullName,
+                        style = SwType.Title.copy(fontSize = 16.sp),
+                        color = if (active) OnDark else OnDarkMuted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        "${worker.position}  ·  ${worker.department}",
+                        style = SwType.Caption, color = OnDarkMuted,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(7.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier.clip(CircleShape).background(Surface3)
+                                .padding(horizontal = 9.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                worker.workerCode, fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold, color = OnDarkMuted,
                             )
                         }
-                    }
-                }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(Modifier.width(7.dp))
                         Text(
-                            worker.fullName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                            worker.employeeType, style = SwType.Caption.copy(fontSize = 11.sp),
+                            color = OnDarkFaint, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Box(
-                            Modifier.clip(RoundedCornerShape(8.dp)).background(PrimaryBlue.copy(alpha = 0.1f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp),
-                        ) {
-                            Text(worker.employeeType, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, color = PrimaryBlue, maxLines = 1)
-                        }
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        "${worker.position} • ${worker.department}",
-                        fontSize = 12.5.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text("ID: ${worker.workerCode}", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(1f))
-                        Text(payRateLabel(worker), fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = Success)
                     }
                 }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    payRateLabel(worker),
+                    style = SwType.Title.copy(fontSize = 14.sp),
+                    color = if (active) Lime else OnDarkFaint,
+                    maxLines = 1,
+                )
             }
 
-            Spacer(Modifier.height(14.dp))
-            androidx.compose.material3.HorizontalDivider(color = SubtleDivider)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Phone, null, tint = TextSecondary, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(5.dp))
-                Text(worker.phone.ifBlank { "—" }, fontSize = 12.sp, color = TextSecondary)
+                Icon(Icons.Filled.Phone, null, tint = OnDarkFaint, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(worker.phone.ifBlank { "—" }, style = SwType.Caption, color = OnDarkMuted)
                 Spacer(Modifier.width(16.dp))
-                Icon(Icons.Filled.CalendarMonth, null, tint = TextSecondary, modifier = Modifier.size(13.dp))
-                Spacer(Modifier.width(5.dp))
+                Icon(Icons.Filled.CalendarMonth, null, tint = OnDarkFaint, modifier = Modifier.size(13.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(
                     worker.joinDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy")),
-                    fontSize = 12.sp, color = TextSecondary,
+                    style = SwType.Caption, color = OnDarkMuted,
                 )
             }
         }
     }
 }
 
+/** Stable per-worker accent so a given card keeps its colour across sessions. */
+private val AvatarPalette = listOf(Flame, Volt, Lime, Sun, Coral, Mint, Purple)
+
+internal fun accentFor(key: String): Color {
+    if (key.isEmpty()) return Flame
+    val hash = key.fold(7) { acc, c -> acc * 31 + c.code }
+    return AvatarPalette[((hash % AvatarPalette.size) + AvatarPalette.size) % AvatarPalette.size]
+}
+
 private fun payRateLabel(w: Worker): String = when (w.payType) {
     PayTypes.DAILY -> "₹${(w.dailyRate ?: 0.0).toInt()}/day"
-    PayTypes.MONTHLY -> "₹${(w.monthlySalary ?: 0.0).toInt()}/month"
-    PayTypes.HOURLY -> "₹${(w.hourlyRate ?: 0.0).toInt()}/hour"
-    else -> w.projectRate?.let { "₹${it.toInt()}/project" } ?: "Project Based"
+    PayTypes.MONTHLY -> "₹${(w.monthlySalary ?: 0.0).toInt()}/mo"
+    PayTypes.HOURLY -> "₹${(w.hourlyRate ?: 0.0).toInt()}/hr"
+    else -> w.projectRate?.let { "₹${it.toInt()}/project" } ?: "Project"
 }
