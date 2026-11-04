@@ -16,7 +16,7 @@ on:
       - ".github/workflows/screenshots.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   screenshots:
@@ -53,3 +53,24 @@ jobs:
           name: screenshots
           path: out/
           if-no-files-found: warn
+
+      # Also published to a rolling release: artifact downloads go through
+      # Azure blob storage, which isn't reachable from every environment that
+      # needs to review these, whereas release assets are plain github.com URLs.
+      - name: Publish to rolling release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(out/*.png)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No screenshots to publish."
+            exit 0
+          fi
+          gh release create ui-screenshots \
+            --title "UI screenshots (latest)" \
+            --notes "Compose screens rendered by Roborazzi. Updated automatically on each redesign push." \
+            --prerelease \
+            --target "$GITHUB_SHA" || true
+          gh release upload ui-screenshots "${files[@]}" --clobber
