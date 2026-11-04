@@ -1,7 +1,6 @@
 package com.example.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,18 +19,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,10 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -51,20 +46,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.collectAsStateLifecycle
-import com.example.ui.theme.DarkBlue
-import com.example.ui.theme.Danger
-import com.example.ui.theme.DividerColor
-import com.example.ui.theme.Navy
-import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.Success
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.Coral
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
+import com.example.ui.theme.Surface1
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
+import com.example.ui.theme.Volt
 import com.example.ui.theme.White
 import com.example.ui.vm.AppViewModel
 
 /**
- * Sign-in — mirrors the web app's `login.html`: a deep gradient canvas with
- * faint geometric shapes, the SmartWorker badge, and a white "Welcome Back"
- * card holding the credential form.
+ * Sign-in — the dark canvas with two soft colour glows behind it, the wordmark,
+ * and a single card holding the credentials.
  */
 @Composable
 fun LoginScreen(appVm: AppViewModel) {
@@ -73,28 +71,21 @@ fun LoginScreen(appVm: AppViewModel) {
     var showPassword by remember { mutableStateOf(false) }
     val error by appVm.loginError.collectAsStateLifecycle()
 
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.linearGradient(listOf(DarkBlue, Color(0xFF0B3A86), PrimaryBlue)))
-            .imePadding(),
-    ) {
-        // Decorative shapes from the reference canvas.
+    val canSubmit = username.isNotBlank() && password.isNotBlank()
+    fun submit() {
+        if (canSubmit) appVm.login(username.trim(), password) {}
+    }
+
+    Box(Modifier.fillMaxSize().background(Ink).imePadding()) {
+        // Two blurred colour fields instead of a gradient sheet: the canvas
+        // stays near-black so the card and the accent still read as the system's.
         Box(
-            Modifier.offset(x = 24.dp, y = 96.dp).size(80.dp).rotate(12f)
-                .border(2.dp, White.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+            Modifier.offset(x = (-70).dp, y = (-40).dp).size(260.dp)
+                .blur(90.dp).clip(CircleShape).background(Flame.copy(alpha = 0.30f)),
         )
         Box(
-            Modifier.align(Alignment.TopEnd).offset(x = (-32).dp, y = 130.dp)
-                .size(64.dp).clip(CircleShape).background(White.copy(alpha = 0.10f)),
-        )
-        Box(
-            Modifier.align(Alignment.BottomStart).offset(x = 32.dp, y = (-120).dp)
-                .size(56.dp).rotate(45f).clip(RoundedCornerShape(10.dp)).background(White.copy(alpha = 0.15f)),
-        )
-        Box(
-            Modifier.align(Alignment.BottomEnd).offset(x = (-48).dp, y = (-80).dp)
-                .size(40.dp).clip(CircleShape).border(1.dp, White.copy(alpha = 0.25f), CircleShape),
+            Modifier.align(Alignment.BottomEnd).offset(x = 70.dp, y = 60.dp).size(240.dp)
+                .blur(90.dp).clip(CircleShape).background(Volt.copy(alpha = 0.28f)),
         )
 
         Column(
@@ -105,144 +96,182 @@ fun LoginScreen(appVm: AppViewModel) {
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(56.dp))
+            Spacer(Modifier.height(72.dp))
 
-            // Badge with the online dot
-            Box {
-                Surface(shape = CircleShape, shadowElevation = 8.dp, color = White, modifier = Modifier.size(56.dp)) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(30.dp))
-                    }
-                }
-                Box(
-                    Modifier.align(Alignment.TopEnd).offset(x = 3.dp, y = (-3).dp)
-                        .size(16.dp).clip(CircleShape).background(Success)
-                        .border(1.dp, White, CircleShape),
-                )
+            Box(
+                Modifier.size(62.dp).clip(RoundedCornerShape(20.dp)).background(Flame),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Bolt, null, tint = White, modifier = Modifier.size(30.dp))
             }
-            Spacer(Modifier.height(12.dp))
-            Text("SmartWorker", color = White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(18.dp))
+            Text("SmartWorker", style = SwType.Headline.copy(fontSize = 32.sp), color = OnDark)
+            Spacer(Modifier.height(4.dp))
             Text(
-                "Professional Attendance Management",
-                color = White.copy(alpha = 0.85f), fontSize = 13.sp, textAlign = TextAlign.Center,
+                "Attendance and payroll, on site",
+                style = SwType.Body, color = OnDarkMuted, textAlign = TextAlign.Center,
             )
 
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(36.dp))
 
-            // Credential card
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = White,
-                shadowElevation = 16.dp,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(24.dp)) {
-                    Text("Welcome Back", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Navy)
-                    Text("Access your attendance dashboard", fontSize = 13.sp, color = TextSecondary)
-                    Spacer(Modifier.height(20.dp))
-
-                    Text("Username or Email", fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = Navy)
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = {
-                            username = it
-                            if (error != null) appVm.clearLoginError()
-                        },
-                        singleLine = true,
-                        placeholder = { Text("admin", fontSize = 14.sp, color = TextSecondary) },
-                        leadingIcon = { Icon(Icons.Filled.Person, null, tint = TextSecondary, modifier = Modifier.size(19.dp)) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = DividerColor,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Spacer(Modifier.height(14.dp))
-                    Text("Password", fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = Navy)
-                    Spacer(Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = {
-                            password = it
-                            if (error != null) appVm.clearLoginError()
-                        },
-                        singleLine = true,
-                        placeholder = { Text("••••••••", fontSize = 14.sp, color = TextSecondary) },
-                        leadingIcon = { Icon(Icons.Filled.Lock, null, tint = TextSecondary, modifier = Modifier.size(19.dp)) },
-                        trailingIcon = {
-                            Icon(
-                                if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                if (showPassword) "Hide password" else "Show password",
-                                tint = TextSecondary,
-                                modifier = Modifier.size(20.dp).clickable { showPassword = !showPassword },
-                            )
-                        },
-                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = DividerColor,
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    error?.let {
-                        Spacer(Modifier.height(12.dp))
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
-                                .background(Danger.copy(alpha = 0.1f)).padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(it, color = Danger, fontSize = 12.5.sp)
-                        }
-                    }
-
-                    Spacer(Modifier.height(20.dp))
-                    Button(
-                        onClick = { appVm.login(username.trim(), password) {} },
-                        enabled = username.isNotBlank() && password.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    ) {
-                        Text("Sign In to Dashboard", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-            // Demo credentials — this build ships with seeded accounts.
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(White.copy(alpha = 0.12f))
-                    .padding(14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Surface1)
+                    .padding(22.dp),
             ) {
-                Text("Demo accounts", color = White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("admin / admin123", color = White.copy(alpha = 0.9f), fontSize = 11.5.sp)
-                        Text("Administrator", color = White.copy(alpha = 0.65f), fontSize = 10.sp)
+                Text("Welcome back", style = SwType.Headline.copy(fontSize = 21.sp), color = OnDark)
+                Spacer(Modifier.height(20.dp))
+
+                FieldLabel("Username or email")
+                LoginField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        if (error != null) appVm.clearLoginError()
+                    },
+                    placeholder = "admin",
+                    leading = Icons.Filled.Person,
+                )
+
+                Spacer(Modifier.height(14.dp))
+                FieldLabel("Password")
+                LoginField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        if (error != null) appVm.clearLoginError()
+                    },
+                    placeholder = "••••••••",
+                    leading = Icons.Filled.Lock,
+                    visualTransformation = if (showPassword) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailing = {
+                        Icon(
+                            if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            if (showPassword) "Hide password" else "Show password",
+                            tint = OnDarkMuted,
+                            modifier = Modifier.size(19.dp).clickable { showPassword = !showPassword },
+                        )
+                    },
+                )
+
+                error?.let {
+                    Spacer(Modifier.height(14.dp))
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                            .background(Coral.copy(alpha = 0.14f)).padding(13.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(it, color = Coral, style = SwType.Caption.copy(fontSize = 12.5.sp))
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("suresh / suresh123", color = White.copy(alpha = 0.9f), fontSize = 11.5.sp)
-                        Text("Attendance user", color = White.copy(alpha = 0.65f), fontSize = 10.sp)
-                    }
+                }
+
+                Spacer(Modifier.height(22.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .clip(CircleShape)
+                        .background(if (canSubmit) Flame else Surface3)
+                        .clickable(enabled = canSubmit) { submit() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "Sign in",
+                        style = SwType.Title.copy(fontSize = 15.sp),
+                        color = if (canSubmit) White else OnDarkFaint,
+                    )
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
-            Text(
-                "© SmartWorker. All rights reserved.",
-                color = White.copy(alpha = 0.6f), fontSize = 11.sp,
-            )
+            Spacer(Modifier.height(22.dp))
+            Text("DEMO ACCOUNTS", style = SwType.Label, color = OnDarkFaint)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                DemoAccount("admin / admin123", "Administrator", Flame) {
+                    username = "admin"; password = "admin123"
+                }
+                DemoAccount("suresh / suresh123", "Attendance", Lime) {
+                    username = "suresh"; password = "suresh123"
+                }
+            }
+
+            Spacer(Modifier.height(32.dp))
+            Text("© SmartWorker", style = SwType.Caption, color = OnDarkFaint)
             Spacer(Modifier.height(32.dp))
         }
+    }
+}
+
+@Composable
+private fun FieldLabel(text: String) {
+    Text(text, style = SwType.Label, color = OnDarkMuted)
+    Spacer(Modifier.height(7.dp))
+}
+
+@Composable
+private fun LoginField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    leading: androidx.compose.ui.graphics.vector.ImageVector,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(Surface3)
+            .padding(horizontal = 15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(leading, null, tint = OnDarkMuted, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(11.dp))
+        Box(Modifier.weight(1f)) {
+            if (value.isEmpty()) {
+                Text(placeholder, style = SwType.Body, color = OnDarkFaint)
+            }
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = SwType.Body.copy(color = OnDark),
+                cursorBrush = SolidColor(Flame),
+                visualTransformation = visualTransformation,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (trailing != null) {
+            Spacer(Modifier.width(8.dp))
+            trailing()
+        }
+    }
+}
+
+@Composable
+private fun DemoAccount(
+    credentials: String,
+    role: String,
+    accent: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+) {
+    Column(
+        Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Surface1)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(credentials, style = SwType.Caption.copy(fontSize = 11.5.sp), color = OnDark)
+        Spacer(Modifier.height(3.dp))
+        Text(role, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accent)
     }
 }

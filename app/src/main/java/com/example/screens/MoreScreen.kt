@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,25 +21,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,44 +42,39 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.BuildConfig
 import com.example.data.model.AttendanceStatus
-import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
+import com.example.ui.StatTile
+import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
-import com.example.ui.theme.BackgroundColor
-import com.example.ui.theme.CardBackground
-import com.example.ui.theme.Danger
-import com.example.ui.theme.DarkBlue
-import com.example.ui.theme.Navy
-import com.example.ui.theme.PrimaryBlue
+import com.example.ui.theme.Coral
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Lime
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.Purple
-import com.example.ui.theme.SubtleDivider
-import com.example.ui.theme.Success
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.Warning
+import com.example.ui.theme.Sun
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
+import com.example.ui.theme.Volt
 import com.example.ui.theme.White
 import com.example.ui.vm.AppViewModel
 import com.example.util.LocalImage
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-private val Teal500 = Color(0xFF14B8A6)
-private val Indigo500 = Color(0xFF6366F1)
-
 /**
- * Profile / More hub — mirrors the web app's `profile.html`: gradient profile
- * header, quick stats, account information, permissions, quick actions,
- * system information and logout.
+ * Profile / More hub — identity, what this account may do, and every admin
+ * destination that isn't a tab.
  */
 @Composable
 fun SmartWorkerMoreScreen(
@@ -98,7 +86,8 @@ fun SmartWorkerMoreScreen(
     val user by appVm.currentUser.collectAsStateLifecycle()
     val company by appVm.company.collectAsStateLifecycle()
     val unread by appVm.unreadNotifications.collectAsStateLifecycle()
-    val workers by container.workerRepository.activeWorkers.collectAsStateWithLifecycle(initialValue = emptyList())
+    val workers by container.workerRepository.activeWorkers
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val todayRecords by container.attendanceRepository.recordsOn(LocalDate.now())
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
@@ -108,288 +97,277 @@ fun SmartWorkerMoreScreen(
         it.status == AttendanceStatus.PRESENT || it.status == AttendanceStatus.LATE
     }
 
-    Scaffold(containerColor = BackgroundColor) { padding ->
+    Scaffold(containerColor = com.example.ui.theme.Ink) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { ProfileHeaderCard(u.fullName, u.role, company?.name, company?.logo) }
+            // ── Identity ──
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(Flame),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        LocalImage(company?.logo, null, Modifier.size(64.dp).clip(RoundedCornerShape(20.dp))) {
+                            Text(
+                                u.fullName.take(1).uppercase(),
+                                color = White, fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            u.fullName, style = SwType.Headline.copy(fontSize = 22.sp), color = OnDark,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.clip(CircleShape)
+                                    .background((if (isAdmin) Flame else Lime).copy(alpha = 0.18f))
+                                    .padding(horizontal = 10.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    if (isAdmin) "Administrator" else "Attendance user",
+                                    fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                                    color = if (isAdmin) Flame else Lime,
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                company?.name ?: "SmartWorker",
+                                style = SwType.Caption, color = OnDarkMuted,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
 
-            // ── Quick stats ──
             item {
                 Row(
                     Modifier.padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    ProfileStat("Total Workers", workers.size.toString(), Icons.Filled.Groups, PrimaryBlue, Modifier.weight(1f))
-                    ProfileStat("Present Today", presentToday.toString(), Icons.Filled.CheckCircle, Success, Modifier.weight(1f))
+                    StatTile(
+                        workers.size.toString(), "Active workers",
+                        Modifier.weight(1f).height(100.dp), container = Volt,
+                    )
+                    StatTile(
+                        presentToday.toString(), "Present today",
+                        Modifier.weight(1f).height(100.dp), container = Lime,
+                    )
                 }
             }
 
-            // ── Account information ──
+            // ── Destinations ──
             item {
-                InfoSection("Account Information") {
-                    KeyValue("Full Name", u.fullName)
-                    KeyValue("Username", u.username)
-                    KeyValue("Email", u.email.ifBlank { "—" })
-                    KeyValue("Role", if (isAdmin) "System Administrator" else u.role.replaceFirstChar { it.uppercase() })
-                    u.phone?.takeIf { it.isNotBlank() }?.let { KeyValue("Mobile", it) }
-                    KeyValue("Member Since", u.createdAt.format(DateTimeFormatter.ofPattern("MMMM yyyy")), last = true)
-                }
-            }
-
-            // ── Permissions ──
-            item {
-                InfoSection("Permissions") {
+                val destinations = buildList {
                     if (isAdmin) {
-                        listOf(
-                            "Manage workers & payroll",
-                            "Mark and edit attendance",
-                            "Company settings & closures",
-                            "Transactions & reports",
-                            "Manage attendance users",
-                        ).forEach { PermissionRow(it, granted = true) }
+                        add(Dest("Company settings", "Branding on payslips & ID cards", Icons.Filled.Settings, Flame, "company_settings"))
+                        add(Dest("Sites & projects", "Sites, projects, tasks, departments", Icons.Filled.Tune, Volt, "manage"))
+                        add(Dest("Assignments", "Who works where", Icons.Filled.AccountTree, Lime, "assignments"))
+                        add(Dest("Attendance users", "Accounts that may mark attendance", Icons.Filled.Person, Purple, "attendance_users"))
+                        add(Dest("Closure days", "Holidays and shutdowns", Icons.Filled.EventBusy, Sun, "closures"))
+                        add(Dest("Transactions", "Advances, bonuses, deductions", Icons.Filled.Payments, Coral, "transactions"))
+                        add(Dest("Reports & export", "Per-worker reports and CSV", Icons.Filled.Description, Volt, "reports"))
                     } else {
-                        listOf("Mark attendance", "Scan QR codes", "View workers on assigned sites")
-                            .forEach { PermissionRow(it, granted = true) }
-                        listOf("Edit attendance", "Modify payroll", "Change worker records", "Admin settings")
-                            .forEach { PermissionRow(it, granted = false) }
+                        add(Dest("QR scanner", "Mark by worker ID", Icons.Filled.QrCodeScanner, Flame, "quick_mark"))
+                        add(Dest("Attendance", "Mark or review the day", Icons.Filled.CalendarMonth, Lime, "attendance"))
+                    }
+                    add(Dest("Notifications", "Alerts and reminders", Icons.Filled.Notifications, Sun, "notifications"))
+                }
+                Column(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text("Manage", style = SwType.Headline.copy(fontSize = 18.sp), color = OnDark)
+                    Spacer(Modifier.height(2.dp))
+                    destinations.forEach { d ->
+                        DestinationRow(
+                            dest = d,
+                            badge = if (d.route == "notifications" && unread > 0) unread else null,
+                            onClick = { onNavigate(d.route) },
+                        )
                     }
                 }
             }
 
-            // ── Quick actions ──
+            // ── What this account may do ──
             item {
-                InfoSection("Quick Actions") {
-                    val items = buildList {
-                        if (isAdmin) {
-                            add(Triple("Company Settings", Icons.Filled.Settings, PrimaryBlue) to "company_settings")
-                            add(Triple("Manage Sites & Projects", Icons.Filled.Tune, Indigo500) to "manage")
-                            add(Triple("Assignments", Icons.Filled.AccountTree, Success) to "assignments")
-                            add(Triple("Attendance Users", Icons.Filled.Person, Purple) to "attendance_users")
-                            add(Triple("Closure Days", Icons.Filled.EventBusy, Warning) to "closures")
-                            add(Triple("Transactions", Icons.Filled.Payments, Teal500) to "transactions")
-                            add(Triple("Reports & Export", Icons.Filled.Description, Navy) to "reports")
-                        } else {
-                            add(Triple("QR Scanner", Icons.Filled.QrCodeScanner, Indigo500) to "quick_mark")
-                            add(Triple("Attendance", Icons.Filled.CalendarMonth, Success) to "attendance")
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SwCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Text("PERMISSIONS", style = SwType.Label, color = OnDarkMuted)
+                            Spacer(Modifier.height(12.dp))
+                            if (isAdmin) {
+                                listOf(
+                                    "Manage workers & payroll",
+                                    "Mark and edit attendance",
+                                    "Company settings & closures",
+                                    "Transactions & reports",
+                                    "Manage attendance users",
+                                ).forEach { Permission(it, true) }
+                            } else {
+                                listOf(
+                                    "Mark attendance",
+                                    "Scan QR codes",
+                                    "View workers on assigned sites",
+                                ).forEach { Permission(it, true) }
+                                listOf(
+                                    "Edit attendance",
+                                    "Modify payroll",
+                                    "Change worker records",
+                                    "Admin settings",
+                                ).forEach { Permission(it, false) }
+                            }
                         }
-                        add(Triple("Notifications", Icons.Filled.Notifications, Warning) to "notifications")
-                    }
-                    items.forEachIndexed { i, (spec, dest) ->
-                        val (label, icon, tint) = spec
-                        ActionRow(
-                            label = label,
-                            icon = icon,
-                            tint = tint,
-                            badge = if (dest == "notifications" && unread > 0) unread else null,
-                            last = i == items.lastIndex,
-                        ) { onNavigate(dest) }
                     }
                 }
             }
 
-            // ── Cloud backup ──
+            // ── Backup + build ──
             item {
-                InfoSection("Cloud Backup") {
-                    ActionRow("Sync Now", Icons.Filled.CloudSync, PrimaryBlue, last = true) { appVm.syncNow() }
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SwCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                                    .clickable { appVm.syncNow() },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(Icons.Filled.CloudSync, null, tint = Volt, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text("Sync now", style = SwType.Title.copy(fontSize = 14.5.sp), color = OnDark)
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.Filled.ChevronRight, null, tint = OnDarkFaint, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(Modifier.height(16.dp))
+                            KeyValue("Application", "SmartWorker v${BuildConfig.VERSION_NAME}")
+                            KeyValue("Build", BuildConfig.VERSION_CODE.toString())
+                            KeyValue("Database", "Connected · offline-first")
+                            KeyValue(
+                                "Signed in since",
+                                u.createdAt.format(DateTimeFormatter.ofPattern("MMMM yyyy")),
+                            )
+                        }
+                    }
                 }
             }
 
-            // ── System information ──
-            item {
-                InfoSection("System Information") {
-                    KeyValue("Application", "SmartWorker v${BuildConfig.VERSION_NAME}")
-                    KeyValue("Build", BuildConfig.VERSION_CODE.toString())
-                    KeyValue("Database", "Connected · offline-first")
-                    KeyValue("Today", LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy")), last = true)
-                }
-            }
-
-            // ── Logout ──
             item {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Danger.copy(alpha = 0.1f))
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Coral.copy(alpha = 0.13f))
                         .clickable(onClick = onLogout)
-                        .padding(16.dp),
+                        .padding(17.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Danger, modifier = Modifier.size(20.dp))
+                    Icon(Icons.AutoMirrored.Filled.Logout, null, tint = Coral, modifier = Modifier.size(19.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text("Log Out", color = Danger, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Text("Log out", style = SwType.Title.copy(fontSize = 15.sp), color = Coral)
                 }
             }
         }
     }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+private data class Dest(
+    val label: String,
+    val sub: String,
+    val icon: ImageVector,
+    val accent: Color,
+    val route: String,
+)
+
 @Composable
-private fun ProfileHeaderCard(fullName: String, role: String, companyName: String?, logo: String?) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp))
-            .background(Brush.linearGradient(listOf(PrimaryBlue, Color(0xFF1E3A8A), DarkBlue)))
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 22.dp),
-    ) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(88.dp)) {
-                Box(
-                    Modifier.size(88.dp).clip(CircleShape).background(White.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    LocalImage(logo, "Profile", Modifier.size(88.dp).clip(CircleShape)) {
-                        Text(
-                            fullName.take(1).uppercase(),
-                            color = White, fontSize = 34.sp, fontWeight = FontWeight.Bold,
-                        )
-                    }
-                }
-                Box(
-                    Modifier.align(Alignment.BottomEnd).offset(x = 2.dp, y = 2.dp)
-                        .size(28.dp).clip(CircleShape).background(White),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Business, null, tint = PrimaryBlue, modifier = Modifier.size(15.dp)) }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(fullName, color = White, fontSize = 21.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(4.dp))
+private fun DestinationRow(dest: Dest, badge: Int?, onClick: () -> Unit) {
+    SwCard(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(Modifier.fillMaxWidth().padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.clip(RoundedCornerShape(999.dp)).background(White.copy(alpha = 0.18f))
-                    .padding(horizontal = 14.dp, vertical = 5.dp),
+                Modifier.size(40.dp).clip(RoundedCornerShape(13.dp))
+                    .background(dest.accent.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
             ) {
+                Icon(dest.icon, null, tint = dest.accent, modifier = Modifier.size(19.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    if (role == "admin") "System Administrator" else role.replaceFirstChar { it.uppercase() },
-                    color = White, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+                    dest.label, style = SwType.Title.copy(fontSize = 14.5.sp), color = OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    dest.sub, style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
-            companyName?.takeIf { it.isNotBlank() }?.let {
-                Spacer(Modifier.height(6.dp))
-                Text(it, color = White.copy(alpha = 0.9f), fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (badge != null) {
+                Box(
+                    Modifier.clip(CircleShape).background(Coral).padding(horizontal = 8.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        if (badge > 9) "9+" else "$badge",
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold, color = White,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
             }
+            Icon(Icons.Filled.ChevronRight, null, tint = OnDarkFaint, modifier = Modifier.size(18.dp))
         }
     }
 }
 
-// ── Building blocks ───────────────────────────────────────────────────────────
 @Composable
-private fun InfoSection(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        Text(
-            title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
-        )
-        Card(
-            Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            elevation = CardDefaults.cardElevation(0.dp),
-            border = CardBorder,
-        ) { Column(content = content) }
-    }
-}
-
-@Composable
-private fun KeyValue(label: String, value: String, last: Boolean = false) {
+private fun Permission(label: String, granted: Boolean) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, fontSize = 13.sp, color = TextSecondary, modifier = Modifier.weight(1f))
-        Text(
-            value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Navy,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
-    }
-    if (!last) HorizontalDivider(color = SubtleDivider, modifier = Modifier.padding(start = 16.dp))
-}
-
-@Composable
-private fun PermissionRow(label: String, granted: Boolean) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().padding(vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(22.dp).clip(CircleShape)
-                .background((if (granted) Success else Danger).copy(alpha = 0.12f)),
+            Modifier.size(19.dp).clip(CircleShape)
+                .background((if (granted) Lime else Surface3).copy(alpha = if (granted) 0.2f else 1f)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 if (granted) Icons.Filled.Check else Icons.Filled.Close,
-                if (granted) "Allowed" else "Not allowed",
-                tint = if (granted) Success else Danger,
-                modifier = Modifier.size(13.dp),
+                null,
+                tint = if (granted) Lime else OnDarkFaint,
+                modifier = Modifier.size(12.dp),
             )
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(11.dp))
         Text(
-            label, fontSize = 13.sp,
-            color = if (granted) Navy else TextSecondary,
-            modifier = Modifier.weight(1f),
+            label,
+            style = SwType.Body.copy(fontSize = 13.5.sp),
+            color = if (granted) OnDark else OnDarkFaint,
         )
     }
 }
 
 @Composable
-private fun ActionRow(
-    label: String,
-    icon: ImageVector,
-    tint: Color,
-    badge: Int? = null,
-    last: Boolean = false,
-    onClick: () -> Unit,
-) {
+private fun KeyValue(key: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 13.dp),
+        Modifier.fillMaxWidth().padding(vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(tint.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp)) }
-        Spacer(Modifier.width(12.dp))
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Navy, modifier = Modifier.weight(1f))
-        if (badge != null) {
-            Box(
-                Modifier.clip(CircleShape).background(Danger).padding(horizontal = 7.dp, vertical = 2.dp),
-            ) { Text(badge.toString(), color = White, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-            Spacer(Modifier.width(8.dp))
-        }
-        Icon(
-            Icons.Filled.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(18.dp),
+        Text(key, style = SwType.Caption, color = OnDarkMuted, modifier = Modifier.weight(1f))
+        Text(
+            value, style = SwType.Caption.copy(fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
+            color = OnDark, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
-    }
-    if (!last) HorizontalDivider(color = SubtleDivider, modifier = Modifier.padding(start = 62.dp))
-}
-
-@Composable
-private fun ProfileStat(label: String, value: String, icon: ImageVector, tint: Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp)) }
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(value, fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Navy)
-                Text(label, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
     }
 }
