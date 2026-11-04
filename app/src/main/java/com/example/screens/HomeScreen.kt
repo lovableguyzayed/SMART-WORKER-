@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -20,83 +19,69 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EventBusy
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Workspaces
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
+import com.example.data.model.ClosureDay
 import com.example.data.model.User
 import com.example.data.model.Worker
-import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
+import com.example.ui.SectionHeader
+import com.example.ui.StatTile
+import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
-import com.example.ui.theme.BackgroundColor
-import com.example.ui.theme.CardBackground
+import com.example.ui.theme.Coral
+import com.example.ui.theme.Cream
 import com.example.ui.theme.Danger
-import com.example.ui.theme.DarkBlue
-import com.example.ui.theme.Navy
-import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.Purple
-import com.example.ui.theme.SubtleDivider
-import com.example.ui.theme.Success
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.Warning
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Forest
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
+import com.example.ui.theme.Mint
+import com.example.ui.theme.OnBright
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkMuted
+import com.example.ui.theme.Sun
+import com.example.ui.theme.Surface1
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
+import com.example.ui.theme.Volt
 import com.example.ui.theme.White
 import com.example.ui.vm.DashboardViewModel
 import com.example.util.LocalImage
-import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
-
-// Stat-card gradients, matching the web dashboard's Tailwind pairs.
-private val Blue500 = Color(0xFF3B82F6)
-private val Blue600 = Color(0xFF2563EB)
-private val Green500 = Color(0xFF22C55E)
-private val Green600 = Color(0xFF16A34A)
-private val Purple500 = Color(0xFFA855F7)
-private val Purple600 = Color(0xFF9333EA)
-private val Orange500 = Color(0xFFF97316)
-private val Orange600 = Color(0xFFEA580C)
-private val Indigo500 = Color(0xFF6366F1)
-private val Teal500 = Color(0xFF14B8A6)
 
 /**
- * Dashboard — mirrors the web app's `dashboard.html`: gradient header with a
- * welcome card, 2×2 quick-stat tiles, a payroll shortcut, the quick-action
- * grid, today's attendance ledger and upcoming closures.
+ * Dashboard — a bento grid in the house style: one hero figure, a tile grid of
+ * supporting stats, a conversational prompt when something needs doing, then
+ * colour-coded action tiles and today's attendance ledger.
  */
 @Composable
 fun HomeScreen(
@@ -111,11 +96,13 @@ fun HomeScreen(
     val company by container.catalogRepository.company.collectAsStateWithLifecycle(initialValue = null)
     val unread by container.catalogRepository.unreadCount.collectAsStateWithLifecycle(initialValue = 0)
 
-    Scaffold(containerColor = BackgroundColor) { padding ->
+    val unmarked = (state.totalWorkers - state.marked).coerceAtLeast(0)
+
+    Scaffold(containerColor = Ink) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
                 DashboardHeader(
@@ -123,136 +110,141 @@ fun HomeScreen(
                     logo = company?.logo,
                     firstName = user.fullName.trim().split(" ").firstOrNull().orEmpty(),
                     unread = unread,
-                    isAdmin = user.isAdmin,
                     onNotifications = onOpenNotifications,
                     onProfile = { onQuickAction("more") },
                 )
             }
 
-            // ── Quick stats (2 × 2) ──
+            // ── Hero: the one figure the day is judged on ──
+            item {
+                HeroTile(
+                    label = "Present today",
+                    value = state.present.toString(),
+                    caption = buildString {
+                        append("of ${state.totalWorkers} workers")
+                        if (state.totalWorkers > 0) append("  ·  ${state.attendancePct.toInt()}% attendance")
+                    },
+                    onClick = { onQuickAction("attendance") },
+                )
+            }
+
+            // ── Supporting stats ──
             item {
                 Column(
                     Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Total Workers", state.totalWorkers.toString(), Icons.Filled.Groups, Blue500, Blue600, Modifier.weight(1f)) { onQuickAction("workers") }
-                        StatCard("Present Today", state.present.toString(), Icons.Filled.CheckCircle, Green500, Green600, Modifier.weight(1f)) { onQuickAction("attendance") }
+                        StatTile(
+                            value = state.absent.toString(),
+                            label = "Absent",
+                            container = Coral,
+                            modifier = Modifier.weight(1f).height(108.dp),
+                            onClick = { onQuickAction("attendance") },
+                        )
+                        StatTile(
+                            value = state.late.toString(),
+                            label = "Late",
+                            container = Sun,
+                            modifier = Modifier.weight(1f).height(108.dp),
+                            onClick = { onQuickAction("attendance") },
+                        )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatCard("Attendance Rate", "${state.attendancePct.toInt()}%", Icons.Filled.PieChart, Purple500, Purple600, Modifier.weight(1f)) { onQuickAction("attendance") }
-                        StatCard("Absent Today", state.absent.toString(), Icons.Filled.PersonOff, Orange500, Orange600, Modifier.weight(1f)) { onQuickAction("attendance") }
+                        StatTile(
+                            value = state.totalWorkers.toString(),
+                            label = "Total workers",
+                            container = Volt,
+                            modifier = Modifier.weight(1f).height(108.dp),
+                            onClick = { onQuickAction("workers") },
+                        )
+                        StatTile(
+                            value = state.leave.toString(),
+                            label = "On leave",
+                            container = Surface1,
+                            modifier = Modifier.weight(1f).height(108.dp),
+                            onClick = { onQuickAction("attendance") },
+                        )
                     }
                 }
             }
 
-            // ── Payroll shortcut (admin) ──
-            if (user.isAdmin) {
+            // ── Conversational prompt ──
+            item {
+                InsightTile(
+                    message = when {
+                        state.totalWorkers == 0 ->
+                            "No workers yet. Add your first worker to start tracking attendance."
+                        unmarked > 0 ->
+                            "$unmarked ${if (unmarked == 1) "worker is" else "workers are"} still unmarked today. " +
+                                "You're not starting from scratch — you're just finishing."
+                        else ->
+                            "All ${state.totalWorkers} workers marked today. Nothing left on the attendance list."
+                    },
+                    actionLabel = if (state.totalWorkers == 0) "Add worker" else if (unmarked > 0) "Mark now" else null,
+                    onAction = {
+                        onQuickAction(if (state.totalWorkers == 0) "worker_form" else "attendance")
+                    },
+                )
+            }
+
+            // ── Action tiles ──
+            item {
+                Column(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SectionHeader("Quick actions")
+                    val actions = buildList {
+                        add(ActionSpec("Scan QR", "Mark by worker ID", Icons.Filled.QrCodeScanner, Flame, White, "quick_mark"))
+                        add(ActionSpec("Attendance", "Mark or review", Icons.Filled.HowToReg, Forest, White, "attendance"))
+                        if (user.isAdmin) {
+                            add(ActionSpec("Payroll", "Wages & payslips", Icons.Filled.ReceiptLong, Cream, OnBright, "payroll"))
+                            add(ActionSpec("Add worker", "New record", Icons.Filled.PersonAdd, Surface1, OnDark, "worker_form"))
+                            add(ActionSpec("Transactions", "Advances & bonuses", Icons.Filled.Payments, Surface1, OnDark, "transactions"))
+                            add(ActionSpec("Reports", "Export & analyse", Icons.Filled.Workspaces, Surface1, OnDark, "reports"))
+                            add(ActionSpec("Closures", "Holidays & shutdowns", Icons.Filled.EventBusy, Surface1, OnDark, "closures"))
+                        }
+                    }
+                    actions.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            pair.forEach { spec ->
+                                ActionTile(spec, Modifier.weight(1f)) { onQuickAction(spec.destination) }
+                            }
+                            if (pair.size == 1) Spacer(Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+
+            // ── Today's ledger ──
+            item {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    SectionHeader(
+                        "Today's attendance",
+                        action = if (state.recent.isNotEmpty()) "See all" else null,
+                        onAction = { onQuickAction("attendance") },
+                    )
+                }
+            }
+            if (state.recent.isEmpty()) {
                 item {
-                    Box(
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Brush.linearGradient(listOf(PrimaryBlue, DarkBlue)))
-                            .clickable { onQuickAction("payroll") }
-                            .padding(16.dp),
-                    ) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(White.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center,
-                            ) { Icon(Icons.Filled.ReceiptLong, null, tint = White, modifier = Modifier.size(24.dp)) }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("Payroll", color = White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                                Text("Calculate & track monthly wages", color = White.copy(alpha = 0.9f), fontSize = 12.5.sp)
-                            }
-                            Icon(Icons.Filled.ChevronRight, null, tint = White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        SwCard(Modifier.fillMaxWidth()) {
+                            Text(
+                                "Nothing marked yet today.",
+                                style = SwType.Body,
+                                color = OnDarkMuted,
+                                modifier = Modifier.padding(20.dp),
+                            )
                         }
                     }
                 }
-            }
-
-            // ── Quick actions ──
-            item {
-                Card(
-                    Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    border = CardBorder,
-                ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text("Quick Actions", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-                        Spacer(Modifier.height(14.dp))
-                        val actions = buildList {
-                            if (user.isAdmin) add(Triple("Add Worker", Icons.Filled.PersonAdd, PrimaryBlue) to "worker_form")
-                            add(Triple("Mark Attendance", Icons.Filled.HowToReg, Green500) to "attendance")
-                            add(Triple("QR Scanner", Icons.Filled.QrCodeScanner, Indigo500) to "quick_mark")
-                            if (user.isAdmin) {
-                                add(Triple("Transactions", Icons.Filled.Payments, Teal500) to "transactions")
-                                add(Triple("Reports", Icons.Filled.Workspaces, Purple500) to "reports")
-                                add(Triple("Closures", Icons.Filled.EventBusy, Orange500) to "closures")
-                            }
-                        }
-                        actions.chunked(2).forEach { pair ->
-                            Row(
-                                Modifier.fillMaxWidth().padding(bottom = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                pair.forEach { (spec, dest) ->
-                                    val (label, icon, color) = spec
-                                    ActionButton(label, icon, color, Modifier.weight(1f)) { onQuickAction(dest) }
-                                }
-                                if (pair.size == 1) Spacer(Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Today's attendance ledger ──
-            item {
-                Card(
-                    Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    elevation = CardDefaults.cardElevation(0.dp),
-                    border = CardBorder,
-                ) {
-                    Column {
-                        Row(
-                            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("Today's Attendance", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy, modifier = Modifier.weight(1f))
-                            Text(
-                                "VIEW ALL", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = PrimaryBlue,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { onQuickAction("attendance") }.padding(4.dp),
-                            )
-                        }
-                        // Column headers
-                        Row(
-                            Modifier.fillMaxWidth().background(BackgroundColor).padding(horizontal = 16.dp, vertical = 6.dp),
-                        ) {
-                            LedgerHead("WORKER", Modifier.weight(1f), TextAlign.Start)
-                            LedgerHead("IN", Modifier.width(52.dp), TextAlign.Center)
-                            LedgerHead("OUT", Modifier.width(52.dp), TextAlign.Center)
-                            LedgerHead("STATUS", Modifier.width(64.dp), TextAlign.End)
-                        }
-                        if (state.recent.isEmpty()) {
-                            Text(
-                                "No attendance marked today yet.",
-                                fontSize = 13.sp, color = TextSecondary,
-                                modifier = Modifier.padding(16.dp),
-                            )
-                        } else {
-                            state.recent.forEach { (record, worker) ->
-                                LedgerRow(worker, record) { onQuickAction("attendance") }
-                                androidx.compose.material3.HorizontalDivider(color = SubtleDivider)
-                            }
-                        }
+            } else {
+                items(state.recent.size) { i ->
+                    val (record, worker) = state.recent[i]
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        LedgerRow(worker, record) { onQuickAction("attendance") }
                     }
                 }
             }
@@ -260,36 +252,13 @@ fun HomeScreen(
             // ── Upcoming closures ──
             if (upcomingClosures.isNotEmpty()) {
                 item {
-                    Card(
-                        Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        elevation = CardDefaults.cardElevation(0.dp),
-                        border = CardBorder,
-                    ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Upcoming Closures", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-                            Spacer(Modifier.height(10.dp))
-                            upcomingClosures.take(5).forEach { c ->
-                                Row(
-                                    Modifier.fillMaxWidth().padding(vertical = 7.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Box(
-                                        Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Warning.copy(alpha = 0.12f)),
-                                        contentAlignment = Alignment.Center,
-                                    ) { Icon(Icons.Filled.CalendarMonth, null, tint = Warning, modifier = Modifier.size(18.dp)) }
-                                    Spacer(Modifier.width(10.dp))
-                                    Column(Modifier.weight(1f)) {
-                                        Text(c.reason, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(
-                                            c.date.format(DateTimeFormatter.ofPattern("EEE, dd MMM yyyy")),
-                                            fontSize = 11.5.sp, color = TextSecondary,
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                    Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                        SectionHeader("Upcoming closures")
+                    }
+                }
+                items(upcomingClosures.size) { i ->
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        ClosureRow(upcomingClosures[i])
                     }
                 }
             }
@@ -297,80 +266,83 @@ fun HomeScreen(
     }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+private data class ActionSpec(
+    val label: String,
+    val sub: String,
+    val icon: ImageVector,
+    val container: Color,
+    val foreground: Color,
+    val destination: String,
+)
+
 @Composable
 private fun DashboardHeader(
     companyName: String,
     logo: String?,
     firstName: String,
     unread: Int,
-    isAdmin: Boolean,
     onNotifications: () -> Unit,
     onProfile: () -> Unit,
 ) {
-    Box(
+    val greeting = when (LocalTime.now().hour) {
+        in 0..11 -> "Good morning"
+        in 12..16 -> "Good afternoon"
+        else -> "Good evening"
+    }
+    Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 26.dp, bottomEnd = 26.dp))
-            .background(Brush.linearGradient(listOf(PrimaryBlue, Color(0xFF1E3A8A), DarkBlue)))
             .statusBarsPadding()
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Surface3)
+                .clickable(onClick = onProfile),
+            contentAlignment = Alignment.Center,
+        ) {
+            LocalImage(logo, "Company logo", Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))) {
+                Icon(Icons.Filled.Business, null, tint = Flame, modifier = Modifier.size(22.dp))
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (firstName.isBlank()) greeting else "$greeting, $firstName",
+                style = SwType.Caption,
+                color = OnDarkMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                companyName,
+                style = SwType.Headline.copy(fontSize = 21.sp),
+                color = OnDark,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Box(
+            Modifier.semantics {
+                contentDescription = if (unread > 0) "Notifications, $unread unread" else "Notifications"
+            },
+        ) {
+            Box(
+                Modifier.size(42.dp).clip(CircleShape).background(Surface3).clickable(onClick = onNotifications),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Notifications, null, tint = OnDark, modifier = Modifier.size(20.dp))
+            }
+            if (unread > 0) {
                 Box(
-                    Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)).background(White.copy(alpha = 0.15f)),
+                    Modifier.size(18.dp).background(Danger, CircleShape).align(Alignment.TopEnd),
                     contentAlignment = Alignment.Center,
                 ) {
-                    LocalImage(logo, "Logo", Modifier.size(40.dp).clip(RoundedCornerShape(10.dp))) {
-                        Icon(Icons.Filled.Business, null, tint = White, modifier = Modifier.size(22.dp))
-                    }
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(companyName, color = White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("Dashboard Overview", color = White.copy(alpha = 0.9f), fontSize = 13.sp)
-                }
-                if (isAdmin) {
-                    Box {
-                        HeaderIconButton(Icons.Filled.Notifications, "Notifications", onNotifications)
-                        if (unread > 0) {
-                            Box(
-                                Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp)
-                                    .size(17.dp).clip(CircleShape).background(Danger),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    if (unread > 9) "9+" else unread.toString(),
-                                    color = White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.width(10.dp))
-                }
-                HeaderIconButton(Icons.Filled.Person, "Profile", onProfile)
-            }
-
-            Spacer(Modifier.height(16.dp))
-            // Glass welcome card
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(White.copy(alpha = 0.15f))
-                    .padding(16.dp),
-            ) {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        if (firstName.isBlank()) "Welcome back!" else "Welcome back, $firstName!",
-                        color = White, fontSize = 21.sp, fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy")),
-                        color = White.copy(alpha = 0.9f), fontSize = 13.sp,
+                        if (unread > 9) "9+" else "$unread",
+                        fontSize = 9.sp, color = White, fontWeight = FontWeight.Bold,
                     )
                 }
             }
@@ -378,116 +350,164 @@ private fun DashboardHeader(
     }
 }
 
+/** Full-width hero figure — the trakmac "calories today" tile, our numbers. */
 @Composable
-private fun HeaderIconButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    Box(
-        Modifier.size(40.dp).clip(CircleShape).background(White.copy(alpha = 0.15f)).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(icon, desc, tint = White, modifier = Modifier.size(20.dp)) }
+private fun HeroTile(label: String, value: String, caption: String, onClick: () -> Unit) {
+    Box(Modifier.padding(horizontal = 16.dp)) {
+        SwCard(Modifier.fillMaxWidth(), container = Flame, onClick = onClick) {
+            Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        label.uppercase(),
+                        style = SwType.Label,
+                        color = White.copy(alpha = 0.85f),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward, null,
+                        tint = White.copy(alpha = 0.9f), modifier = Modifier.size(20.dp),
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(value, style = SwType.StatHuge, color = White)
+                Spacer(Modifier.height(2.dp))
+                Text(caption, style = SwType.Caption, color = White.copy(alpha = 0.88f))
+            }
+        }
+    }
 }
 
-// ── Pieces ────────────────────────────────────────────────────────────────────
+/** The calm mint tile that tells you what still needs doing. */
 @Composable
-private fun StatCard(
-    label: String,
-    value: String,
-    icon: ImageVector,
-    from: Color,
-    to: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(Brush.linearGradient(listOf(from, to)))
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(value, color = White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                Text(label, color = White.copy(alpha = 0.9f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun InsightTile(message: String, actionLabel: String?, onAction: () -> Unit) {
+    Box(Modifier.padding(horizontal = 16.dp)) {
+        SwCard(Modifier.fillMaxWidth(), container = Mint) {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Text("»", style = SwType.Title, color = OnBright.copy(alpha = 0.55f))
+                Spacer(Modifier.height(4.dp))
+                Text(message, style = SwType.Body.copy(fontSize = 14.5.sp), color = OnBright)
+                if (actionLabel != null) {
+                    Spacer(Modifier.height(14.dp))
+                    Box(
+                        Modifier
+                            .clip(CircleShape)
+                            .background(OnBright)
+                            .clickable(onClick = onAction)
+                            .padding(horizontal = 18.dp, vertical = 9.dp),
+                    ) {
+                        Text(actionLabel, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Mint)
+                    }
+                }
             }
-            Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(White.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(icon, null, tint = White, modifier = Modifier.size(21.dp)) }
         }
     }
 }
 
 @Composable
-private fun ActionButton(label: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Row(
-        modifier
-            .height(54.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(color)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-    ) {
-        Icon(icon, null, tint = White, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(
-            label, color = White, fontSize = 12.5.sp, fontWeight = FontWeight.Medium,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+private fun ActionTile(spec: ActionSpec, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    SwCard(modifier.height(112.dp), container = spec.container, onClick = onClick) {
+        Column(
+            Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Icon(spec.icon, null, tint = spec.foreground, modifier = Modifier.size(24.dp))
+            Column {
+                Text(
+                    spec.label, style = SwType.Title.copy(fontSize = 15.sp), color = spec.foreground,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    spec.sub, style = SwType.Caption.copy(fontSize = 11.5.sp),
+                    color = spec.foreground.copy(alpha = 0.7f),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 
-@Composable
-private fun LedgerHead(text: String, modifier: Modifier = Modifier, align: TextAlign) {
-    Text(
-        text, modifier = modifier, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
-        color = TextSecondary, textAlign = align,
-    )
-}
-
+/** Attendance row, colour-blocked by status like the task-board reference. */
 @Composable
 private fun LedgerRow(worker: Worker, record: AttendanceRecord, onClick: () -> Unit) {
-    val timeFmt = remember { DateTimeFormatter.ofPattern("h:mm a", Locale.US) }
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+    val accent = statusAccent(record.status)
+    SwCard(Modifier.fillMaxWidth(), onClick = onClick) {
+        Row(
+            Modifier.fillMaxWidth().padding(end = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Status spine — reads at a glance down the list.
+            Box(Modifier.width(5.dp).height(62.dp).background(accent))
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
+                Text(
+                    worker.fullName, style = SwType.Title.copy(fontSize = 15.sp), color = OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    listOfNotNull(
+                        worker.workerCode.takeIf { it.isNotBlank() },
+                        record.checkInTime?.format(DateTimeFormatter.ofPattern("hh:mm a")),
+                        record.lateMinutes.takeIf { it > 0 }?.let { "$it min late" },
+                    ).joinToString("  ·  "),
+                    style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
             Box(
-                Modifier.size(32.dp).clip(CircleShape).background(Brush.linearGradient(listOf(PrimaryBlue, DarkBlue))),
-                contentAlignment = Alignment.Center,
+                Modifier.clip(CircleShape).background(accent.copy(alpha = 0.18f))
+                    .padding(horizontal = 11.dp, vertical = 5.dp),
             ) {
-                LocalImage(worker.profileImage, null, Modifier.size(32.dp).clip(CircleShape)) {
-                    Text(worker.fullName.take(1).uppercase(), color = White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                }
+                Text(
+                    record.status.replaceFirstChar { it.uppercase() },
+                    fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = accent,
+                )
             }
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(worker.fullName, fontSize = 12.5.sp, fontWeight = FontWeight.Medium, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(worker.workerCode, fontSize = 10.5.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Text(
-            record.checkInTime?.format(timeFmt) ?: "–",
-            modifier = Modifier.width(52.dp), fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold,
-            color = if (record.checkInTime != null) Success else TextSecondary, textAlign = TextAlign.Center,
-        )
-        Text(
-            record.checkOutTime?.format(timeFmt) ?: if (record.checkInTime != null) "shift" else "–",
-            modifier = Modifier.width(52.dp), fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold,
-            color = if (record.checkOutTime != null) Navy else PrimaryBlue, textAlign = TextAlign.Center,
-        )
-        Row(Modifier.width(64.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            val (label, color) = when (record.status) {
-                AttendanceStatus.PRESENT -> "Present" to Success
-                AttendanceStatus.LATE -> "Late" to Warning
-                AttendanceStatus.ABSENT -> "Absent" to Danger
-                else -> "Leave" to Purple
-            }
-            Box(Modifier.size(6.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(4.dp))
-            Text(label, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, color = color, maxLines = 1)
         }
     }
+}
+
+@Composable
+private fun ClosureRow(closure: ClosureDay) {
+    SwCard(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(Sun),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    closure.date.dayOfMonth.toString(),
+                    style = SwType.Title, color = OnBright,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    closure.reason, style = SwType.Title.copy(fontSize = 14.5.sp), color = OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${closure.date.format(DateTimeFormatter.ofPattern("EEE, dd MMM"))}  ·  " +
+                        closure.type.replaceFirstChar { it.uppercase() },
+                    style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (!closure.allowAttendance) {
+                Box(
+                    Modifier.clip(CircleShape).background(Coral.copy(alpha = 0.18f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text("No marking", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Coral)
+                }
+            }
+        }
+    }
+}
+
+internal fun statusAccent(status: String): Color = when (status) {
+    AttendanceStatus.PRESENT -> Lime
+    AttendanceStatus.LATE -> Sun
+    AttendanceStatus.ABSENT -> Coral
+    AttendanceStatus.LEAVE -> Volt
+    else -> OnDarkMuted
 }
