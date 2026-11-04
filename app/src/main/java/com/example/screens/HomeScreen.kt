@@ -96,6 +96,33 @@ fun HomeScreen(
     val company by container.catalogRepository.company.collectAsStateWithLifecycle(initialValue = null)
     val unread by container.catalogRepository.unreadCount.collectAsStateWithLifecycle(initialValue = 0)
 
+    DashboardContent(
+        state = state,
+        upcomingClosures = upcomingClosures,
+        companyName = company?.name,
+        companyLogo = company?.logo,
+        unread = unread,
+        user = user,
+        onOpenNotifications = onOpenNotifications,
+        onQuickAction = onQuickAction,
+    )
+}
+
+/**
+ * The dashboard's pure presentation half. Taking state rather than a ViewModel
+ * keeps it previewable and lets the screenshot tests render it deterministically.
+ */
+@Composable
+internal fun DashboardContent(
+    state: DashboardViewModel.DashboardState,
+    upcomingClosures: List<ClosureDay>,
+    companyName: String?,
+    companyLogo: String?,
+    unread: Int,
+    user: User,
+    onOpenNotifications: () -> Unit,
+    onQuickAction: (String) -> Unit,
+) {
     val unmarked = (state.totalWorkers - state.marked).coerceAtLeast(0)
 
     Scaffold(containerColor = Ink) { padding ->
@@ -106,8 +133,8 @@ fun HomeScreen(
         ) {
             item {
                 DashboardHeader(
-                    companyName = company?.name ?: "SmartWorker",
-                    logo = company?.logo,
+                    companyName = companyName ?: "SmartWorker",
+                    logo = companyLogo,
                     firstName = user.fullName.trim().split(" ").firstOrNull().orEmpty(),
                     unread = unread,
                     onNotifications = onOpenNotifications,

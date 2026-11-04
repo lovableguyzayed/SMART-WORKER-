@@ -1,0 +1,47 @@
+name: UI Screenshots
+
+# Renders the Compose screens to PNG with Roborazzi so the redesign can be
+# reviewed without installing the APK. Run it from the Actions tab, or with
+# `gh workflow run screenshots.yml --ref <branch>`.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # Roborazzi only writes images when record mode is on; the regular test
+      # job runs the same tests with capture disabled.
+      - name: Record screenshots
+        run: ./gradlew testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+
+      - name: Collect PNGs
+        if: always()
+        run: |
+          mkdir -p out
+          find app/build -path '*roborazzi*' -name '*.png' -exec cp {} out/ \; || true
+          echo "--- collected ---"
+          ls -la out || true
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: out/
+          if-no-files-found: warn
