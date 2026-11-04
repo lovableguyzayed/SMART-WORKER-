@@ -6,6 +6,14 @@ name: UI Screenshots
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "claude/**"
+    paths:
+      - "app/src/main/java/com/example/ui/**"
+      - "app/src/main/java/com/example/screens/**"
+      - "app/src/test/java/com/example/screenshots/**"
+      - ".github/workflows/screenshots.yml"
 
 permissions:
   contents: read
