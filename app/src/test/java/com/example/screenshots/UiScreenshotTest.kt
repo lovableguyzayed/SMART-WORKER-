@@ -21,8 +21,14 @@ import com.example.data.model.ClosureDay
 import com.example.data.model.PayTypes
 import com.example.data.model.User
 import com.example.data.model.Worker
+import com.example.data.db.PayrollBatch
+import com.example.data.model.WorkerTransaction
+import com.example.data.repo.PayrollRepository
+import com.example.domain.PayrollCalculator
 import com.example.screens.AttendanceContent
 import com.example.screens.DashboardContent
+import com.example.screens.PayrollContent
+import com.example.screens.PayrollUiState
 import com.example.screens.WorkersContent
 import com.example.ui.MeterRow
 import com.example.ui.PillChip
@@ -46,6 +52,7 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.YearMonth
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -219,8 +226,69 @@ class UiScreenshotTest {
         )
     }
 
+    private fun payRow(id: Long, name: String, code: String, net: Double, status: String) =
+        PayrollRepository.PayrollRow(
+            worker = worker(id, name, code),
+            attendance = PayrollCalculator.AttendanceSummary(24, 2, 1, 1),
+            pay = PayrollCalculator.paySummary(
+                PayrollCalculator.PayInputs(
+                    worker = worker(id, name, code),
+                    records = emptyList(),
+                    periodStart = LocalDate.of(2026, 11, 1),
+                    periodEnd = LocalDate.of(2026, 11, 30),
+                ),
+            ).copy(estimatedPay = net, paidDays = 24),
+            status = status,
+            recordId = id,
+        )
+
     @Test
-    fun designSystem() = shot("05-design-system") {
+    fun payroll() = shot("05-payroll") {
+        PayrollContent(
+            state = PayrollUiState(
+                period = YearMonth.of(2026, 11),
+                rows = listOf(
+                    payRow(1, "Suresh Patil", "MA001", 18720.0, "paid"),
+                    payRow(2, "Anita Deshmukh", "MA002", 17940.0, "pending"),
+                    payRow(3, "Imran Shaikh", "CA014", 21060.0, "paid"),
+                    payRow(4, "Vikram Rathod", "EL007", 15600.0, "pending"),
+                ),
+                totals = PayrollRepository.PayrollTotals(
+                    totalGross = 486000.0,
+                    totalDeductions = 42500.0,
+                    totalNet = 443500.0,
+                    paidCount = 29,
+                    pendingCount = 19,
+                    workerCount = 48,
+                ),
+                batches = listOf(
+                    PayrollBatch(2026, 10, 48, 451200.0, 48),
+                    PayrollBatch(2026, 9, 46, 429800.0, 46),
+                ),
+                advances = listOf(
+                    WorkerTransaction(1, 1, "advance", 3000.0, LocalDate.of(2026, 11, 2), "Festival advance"),
+                    WorkerTransaction(2, 3, "cash_advance", 1500.0, LocalDate.of(2026, 11, 3), ""),
+                ),
+                deductions = emptyList(),
+                workersById = mapOf(1L to worker(1, "Suresh Patil", "MA001")),
+                sites = emptyList(),
+                siteId = null,
+                companyName = "Shreeji Constructions",
+                companyLogo = null,
+                loading = false,
+            ),
+            isAdmin = true,
+            onSetPeriod = {},
+            onSetSite = {},
+            onOpenPayslip = { _, _ -> },
+            onTogglePaid = {},
+            onGenerate = {},
+            onExport = {},
+        )
+    }
+
+    @Test
+    fun designSystem() = shot("06-design-system") {
         Column(
             Modifier.fillMaxSize().background(Ink).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
