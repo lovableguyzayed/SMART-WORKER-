@@ -1,60 +1,47 @@
 package com.example.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme =
+// Smart Worker ships one scheme: the dark canvas the design system is built on.
+// Light mode and dynamic colour are intentionally not offered — the bright
+// colour-blocked tiles rely on a dark surface behind them to read correctly.
+private val SmartWorkerColors =
   darkColorScheme(
-    primary = PrimaryBlue,
-    secondary = DarkBlue,
-    tertiary = Success,
-    background = TextPrimary,
-    surface = TextPrimary,
+    primary = Flame,
     onPrimary = White,
+    primaryContainer = FlameBg,
+    onPrimaryContainer = Flame,
+    secondary = Volt,
     onSecondary = White,
-    onTertiary = White,
-    onBackground = White,
-    onSurface = White,
-  )
-
-private val LightColorScheme =
-  lightColorScheme(
-    primary = PrimaryBlue,
-    secondary = DarkBlue,
-    tertiary = Success,
-    background = BackgroundColor,
-    surface = CardBackground,
-    onPrimary = White,
-    onSecondary = White,
-    onTertiary = White,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
+    secondaryContainer = VoltBg,
+    onSecondaryContainer = Volt,
+    tertiary = Lime,
+    onTertiary = OnBright,
+    background = Ink,
+    onBackground = OnDark,
+    surface = Surface1,
+    onSurface = OnDark,
+    surfaceVariant = Surface3,
+    onSurfaceVariant = OnDarkMuted,
+    surfaceContainer = Surface2,
+    surfaceContainerHigh = Surface2,
+    surfaceContainerHighest = Surface3,
+    outline = Hairline,
+    outlineVariant = SubtleDivider,
+    error = Coral,
+    onError = White,
+    errorContainer = DangerBg,
+    onErrorContainer = Coral,
+    scrim = Scrim,
   )
 
 @Composable
 fun SmartWorkerTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = false,
+  @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true,
+  @Suppress("UNUSED_PARAMETER") dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-
-      darkTheme -> LightColorScheme // using light color scheme for now as no full dark mode spec
-      else -> LightColorScheme
-    }
-
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  MaterialTheme(colorScheme = SmartWorkerColors, typography = Typography, content = content)
 }

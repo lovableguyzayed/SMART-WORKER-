@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.Crossfade
@@ -12,7 +13,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Groups
@@ -45,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -70,11 +70,14 @@ import com.example.screens.HomeScreen
 import com.example.screens.LoginScreen
 import com.example.screens.NotificationsScreen
 import com.example.screens.TransactionsScreen
-import com.example.ui.theme.DarkBlue
-import com.example.ui.theme.DividerColor
-import com.example.ui.theme.PrimaryBlue
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Hairline
+import com.example.ui.theme.OnBright
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.SmartWorkerTheme
-import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.Sun
+import com.example.ui.theme.Surface2
 import com.example.ui.theme.White
 import com.example.ui.vm.AppViewModel
 import com.example.ui.vm.VmFactory
@@ -82,7 +85,14 @@ import com.example.ui.vm.VmFactory
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // The app renders on a dark canvas regardless of the phone's theme, so
+        // pin the system bars to light-on-transparent. Letting enableEdgeToEdge()
+        // auto-detect would paint dark status icons over our dark background on
+        // a phone set to light mode.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+        )
         val container = (application as SmartWorkerApp).container
         setContent {
             SmartWorkerTheme {
@@ -310,31 +320,33 @@ fun MainShell(appVm: AppViewModel, factory: VmFactory, snackbarHost: SnackbarHos
 
 @Composable
 fun UnifiedBottomNavBar(currentTab: String, onTabSelected: (String) -> Unit) {
-    // Floating rounded nav frame with a centred gradient "Scan QR" action —
-    // mirrors the web app's .app-bottom-nav-frame / .app-nav-fab.
+    // Floating dark pill. The selected tab expands into a bright capsule that
+    // carries its label; the others stay as quiet icons, and Scan sits on the
+    // right as the hero action.
     Box(
         Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth().height(82.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = White,
-            shadowElevation = 12.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, DividerColor),
+            modifier = Modifier.fillMaxWidth().height(66.dp),
+            shape = RoundedCornerShape(33.dp),
+            color = Surface2,
+            shadowElevation = 16.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, Hairline),
         ) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                NavTab(Icons.Filled.Home, "Home", currentTab == "home", Modifier.weight(1f)) { onTabSelected("home") }
-                NavTab(Icons.Filled.Groups, "Workers", currentTab == "workers", Modifier.weight(1f)) { onTabSelected("workers") }
+                NavTab(Icons.Filled.Home, "Home", currentTab == "home") { onTabSelected("home") }
+                NavTab(Icons.Filled.Groups, "Workers", currentTab == "workers") { onTabSelected("workers") }
+                NavTab(Icons.Filled.Payments, "Payroll", currentTab == "payroll") { onTabSelected("payroll") }
+                NavTab(Icons.Filled.MoreHoriz, "More", currentTab == "more") { onTabSelected("more") }
+                Spacer(Modifier.width(4.dp))
                 ScanFab(currentTab == "quick_mark") { onTabSelected("quick_mark") }
-                NavTab(Icons.Filled.Payments, "Payroll", currentTab == "payroll", Modifier.weight(1f)) { onTabSelected("payroll") }
-                NavTab(Icons.Filled.MoreHoriz, "More", currentTab == "more", Modifier.weight(1f)) { onTabSelected("more") }
             }
         }
     }
@@ -345,52 +357,48 @@ private fun NavTab(
     icon: ImageVector,
     label: String,
     selected: Boolean,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val fg by animateColorAsState(if (selected) DarkBlue else TextSecondary, label = "fg")
-    val iconBg by animateColorAsState(
-        if (selected) PrimaryBlue.copy(alpha = 0.14f) else Color.Transparent,
-        label = "iconBg",
-    )
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(15.dp))
+    val pill by animateColorAsState(if (selected) Sun else Color.Transparent, label = "pill")
+    val fg by animateColorAsState(if (selected) OnBright else OnDarkMuted, label = "fg")
+    Row(
+        modifier = Modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(23.dp))
+            .background(pill)
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = if (selected) 14.dp else 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
-        Box(
-            Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(iconBg),
-            contentAlignment = Alignment.Center,
-        ) { Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(21.dp)) }
-        Spacer(Modifier.height(3.dp))
-        Text(
-            label, color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-            maxLines = 1, overflow = TextOverflow.Ellipsis,
-        )
+        Icon(icon, contentDescription = label, tint = fg, modifier = Modifier.size(21.dp))
+        if (selected) {
+            Spacer(Modifier.width(7.dp))
+            Text(
+                label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
-/** Centre action — opens Quick Mark (scan-to-attend), the app's primary action. */
+/** Hero action — opens Quick Mark (scan-to-attend), the app's primary action. */
 @Composable
 private fun ScanFab(selected: Boolean, onClick: () -> Unit) {
+    val ring by animateColorAsState(if (selected) OnDark else Flame, label = "ring")
     Box(
         Modifier
-            .padding(horizontal = 4.dp)
-            .size(width = 60.dp, height = 64.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Brush.linearGradient(listOf(DarkBlue, PrimaryBlue)))
+            .size(50.dp)
+            .clip(CircleShape)
+            .background(ring)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Filled.QrCodeScanner, "Scan QR", tint = White,
-                modifier = Modifier.size(if (selected) 27.dp else 25.dp),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text("Scan QR", color = White, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-        }
+        Icon(
+            Icons.Filled.QrCodeScanner,
+            "Scan QR",
+            tint = if (selected) OnBright else White,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
