@@ -1,5 +1,6 @@
 package com.example.screenshots
 
+import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,12 +59,19 @@ import org.robolectric.annotation.GraphicsMode
  * Record with:  ./gradlew testDebugUnitTest -Proborazzi.test.record=true
  * Output:       app/build/outputs/roborazzi/
  */
-// Robolectric 4.16 ships no SDK 36 runtime, and leaving `sdk` unset makes it
-// default to the app's targetSdk — which throws before any test runs. Pin to
-// the newest SDK it does support.
+// Two Robolectric details matter here:
+//  • 4.16 ships no SDK 36 runtime, and an unset `sdk` defaults to the app's
+//    targetSdk, which throws before any test runs — so pin to 34.
+//  • The real SmartWorkerApp schedules a WorkManager job in onCreate(), which
+//    blows up without a WorkManager test harness. These composables take plain
+//    state and need nothing from the container, so run on a bare Application.
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = RobolectricDeviceQualifiers.Pixel7)
+@Config(
+    application = Application::class,
+    sdk = [34],
+    qualifiers = RobolectricDeviceQualifiers.Pixel7,
+)
 class UiScreenshotTest {
 
     @get:Rule
