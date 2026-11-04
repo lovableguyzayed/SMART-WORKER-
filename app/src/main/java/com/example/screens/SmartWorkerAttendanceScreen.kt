@@ -1,11 +1,8 @@
 package com.example.screens
 
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,36 +14,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Apartment
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Call
-import androidx.compose.material.icons.outlined.DoneAll
-import androidx.compose.material.icons.outlined.FileDownload
-import androidx.compose.material.icons.outlined.HowToReg
-import androidx.compose.material.icons.outlined.MoreTime
-import androidx.compose.material.icons.outlined.PersonOff
-import androidx.compose.material.icons.outlined.PersonOutline
-import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -70,40 +58,45 @@ import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.User
 import com.example.data.model.Worker
-import com.example.ui.CardBorder
+import com.example.ui.EmptyState
 import com.example.ui.LocalAppContainer
-import com.example.ui.SwTopBar
+import com.example.ui.MeterRow
+import com.example.ui.StatTile
+import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
-import com.example.ui.theme.AvatarBlueBg
-import com.example.ui.theme.BackgroundColor
-import com.example.ui.theme.CardBackground
-import com.example.ui.theme.Danger
-import com.example.ui.theme.DangerBg
-import com.example.ui.theme.DividerColor
-import com.example.ui.theme.IconBlueBg
-import com.example.ui.theme.Navy
-import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.Purple
-import com.example.ui.theme.PurpleBg
-import com.example.ui.theme.Success
-import com.example.ui.theme.SuccessBg
-import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.Warning
-import com.example.ui.theme.WarningBg
+import com.example.ui.theme.Coral
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Forest
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
+import com.example.ui.theme.OnBright
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
+import com.example.ui.theme.Sun
+import com.example.ui.theme.Surface1
+import com.example.ui.theme.Surface2
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
+import com.example.ui.theme.Volt
+import com.example.ui.theme.White
 import com.example.ui.vm.AttendanceViewModel
 import com.example.util.CsvExporter
-import com.example.util.LocalImage
-import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 /**
- * Daily attendance workspace. Adapts the high-fidelity construction-site design
- * (company header, KPI cards, mark-attendance methods, worker table, summary
- * strip) onto the app's real data: every figure is derived from Room via
- * [AttendanceViewModel], and every control performs a real action.
+ * Attendance — a scrollable day strip across the top (the reference decks' date
+ * selector), the day's marking progress as a meter, colour-blocked totals, then
+ * one row per worker tinted by status.
  */
 @Composable
-fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User, onOpenQuickMark: () -> Unit = {}) {
+fun SmartWorkerAttendanceScreen(
+    vm: AttendanceViewModel,
+    user: User,
+    onOpenQuickMark: () -> Unit = {},
+) {
     val container = LocalAppContainer.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -117,79 +110,32 @@ fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User, onOpenQuick
     var pendingWorker by remember { mutableStateOf<Worker?>(null) }
     var toast by remember { mutableStateOf<String?>(null) }
     var showBulk by remember { mutableStateOf(false) }
-    var tab by remember { mutableStateOf(0) } // 0 Worker List, 1 Summary
 
-    val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM yyyy, EEEE") }
-
-    val overtimeCount = rows.count { (it.record?.overtimeMinutes ?: 0) > 0 }
-    val expected = totals.expected
-    val marked = totals.present + totals.absent + totals.late + totals.leave
-
-    Scaffold(
-        containerColor = BackgroundColor,
-        topBar = { SwTopBar(title = "Attendance") },
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item { CompanyHeader(company?.name ?: "SmartWorker", company?.logo, marked, expected) }
-            item { DateSelector(date.format(dateFmt), onPrev = { vm.shiftDate(-1) }, onNext = { vm.shiftDate(1) }, onToday = { vm.today() }) }
-            item { KpiCards(totals.present, totals.absent, totals.late, totals.leave, overtimeCount, expected) }
-            item {
-                MarkAttendanceCard(
-                    isAdmin = user.isAdmin,
-                    onQuickMark = onOpenQuickMark,
-                    onBulkPresent = { showBulk = true },
-                )
-            }
-            item { AttendanceTabs(tab) { tab = it } }
-
-            if (tab == 0) {
-                item {
-                    SearchExportRow(
-                        query = search,
-                        onQueryChange = vm::setSearch,
-                        onExport = {
-                            val records = rows.mapNotNull { it.record }
-                            if (records.isEmpty()) {
-                                toast = "Nothing to export — no attendance is marked for this day yet."
-                            } else {
-                                scope.launch {
-                                    val byId = rows.associate { it.worker.id to it.worker }
-                                    val csv = CsvExporter.attendanceCsv(records, byId)
-                                    CsvExporter.share(context, "attendance_$date.csv", csv)
-                                }
-                            }
-                        },
-                    )
-                }
-                item { WorkerListHeaderRow() }
-                if (rows.isEmpty()) {
-                    item {
-                        Text(
-                            "No active workers to show.",
-                            fontSize = 13.sp, color = TextSecondary,
-                            modifier = Modifier.padding(vertical = 24.dp),
-                        )
-                    }
-                } else {
-                    items(rows, key = { it.worker.id }) { row ->
-                        WorkerRow(
-                            worker = row.worker,
-                            record = row.record,
-                            onCall = { dial(context, row.worker.phone) },
-                            onMark = { pendingWorker = row.worker },
-                        )
-                        HorizontalDivider(color = DividerColor, thickness = 1.dp)
-                    }
-                }
+    AttendanceContent(
+        date = date,
+        rows = rows,
+        totals = totals,
+        search = search,
+        companyName = company?.name,
+        isAdmin = user.isAdmin,
+        onSetDate = vm::setDate,
+        onSearch = vm::setSearch,
+        onQuickMark = onOpenQuickMark,
+        onBulkPresent = { showBulk = true },
+        onMarkWorker = { pendingWorker = it },
+        onCall = { dial(context, it.phone) },
+        onExport = {
+            val records = rows.mapNotNull { it.record }
+            if (records.isEmpty()) {
+                toast = "Nothing to export — no attendance is marked for this day yet."
             } else {
-                item { SummaryStrip(expected, totals.present, totals.absent, totals.late, totals.leave, overtimeCount) }
+                scope.launch {
+                    val byId = rows.associate { it.worker.id to it.worker }
+                    CsvExporter.share(context, "attendance_$date.csv", CsvExporter.attendanceCsv(records, byId))
+                }
             }
-        }
-    }
+        },
+    )
 
     pendingWorker?.let { worker ->
         MarkDialog(
@@ -206,448 +152,403 @@ fun SmartWorkerAttendanceScreen(vm: AttendanceViewModel, user: User, onOpenQuick
     if (showBulk) {
         AlertDialog(
             onDismissRequest = { showBulk = false },
+            containerColor = Surface2,
+            titleContentColor = OnDark,
+            textContentColor = OnDarkMuted,
             title = { Text("Mark all present?") },
-            text = { Text("This sets every active worker to Present for ${date.format(dateFmt)}. Existing records are updated.") },
+            text = {
+                Text(
+                    "This sets every active worker to Present for " +
+                        "${date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}. " +
+                        "Existing records are updated.",
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     vm.bulkMark(user, AttendanceStatus.PRESENT) { toast = it }
                     showBulk = false
-                }) { Text("Confirm") }
+                }) { Text("Confirm", color = Lime) }
             },
-            dismissButton = { TextButton(onClick = { showBulk = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showBulk = false }) { Text("Cancel", color = OnDarkMuted) } },
         )
     }
 
     toast?.let { message ->
         AlertDialog(
             onDismissRequest = { toast = null },
-            confirmButton = { TextButton(onClick = { toast = null }) { Text("OK") } },
+            containerColor = Surface2,
+            textContentColor = OnDark,
+            confirmButton = { TextButton(onClick = { toast = null }) { Text("OK", color = Flame) } },
             text = { Text(message) },
         )
     }
 }
 
-// ── Company / summary header ──────────────────────────────────────────────────
+/** Presentation half — renders from plain state so it can be screenshotted. */
 @Composable
-private fun CompanyHeader(name: String, logoPath: String?, marked: Int, expected: Int) {
-    val rate = if (expected > 0) marked * 100 / expected else 0
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+internal fun AttendanceContent(
+    date: LocalDate,
+    rows: List<AttendanceViewModel.Row>,
+    totals: AttendanceViewModel.Totals,
+    search: String,
+    companyName: String?,
+    isAdmin: Boolean,
+    onSetDate: (LocalDate) -> Unit,
+    onSearch: (String) -> Unit,
+    onQuickMark: () -> Unit,
+    onBulkPresent: () -> Unit,
+    onMarkWorker: (Worker) -> Unit,
+    onCall: (Worker) -> Unit,
+    onExport: () -> Unit,
+) {
+    val marked = totals.present + totals.absent + totals.late + totals.leave
+    val expected = totals.expected
+    val pct = if (expected > 0) marked * 100 / expected else 0
+
+    Scaffold(containerColor = Ink) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 110.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(IconBlueBg),
-                contentAlignment = Alignment.Center,
-            ) {
-                LocalImage(
-                    path = logoPath,
-                    contentDescription = "Company logo",
-                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)),
-                    fallback = { Icon(Icons.Outlined.Apartment, null, tint = PrimaryBlue, modifier = Modifier.size(28.dp)) },
-                )
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            companyName ?: "SmartWorker",
+                            style = SwType.Caption, color = OnDarkMuted,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                        Text("Attendance", style = SwType.Headline.copy(fontSize = 26.sp), color = OnDark)
+                    }
+                    Box(
+                        Modifier.size(42.dp).clip(CircleShape).background(Surface3)
+                            .clickable(onClick = onExport),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Download, "Export CSV", tint = OnDark, modifier = Modifier.size(19.dp))
+                    }
+                }
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(name, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(2.dp))
-                Text("$marked of $expected marked today", fontSize = 12.sp, color = TextSecondary)
+
+            // ── Day strip ──
+            item { DayStrip(selected = date, onSelect = onSetDate) }
+
+            // ── Marking progress ──
+            item {
+                Box(Modifier.padding(horizontal = 16.dp)) {
+                    Column {
+                        MeterRow(
+                            label = if (expected == 0) "No active workers" else "$marked of $expected marked",
+                            percent = pct,
+                            accent = if (pct >= 100) Lime else Flame,
+                        )
+                    }
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("$rate%", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-                Text("attendance", fontSize = 10.sp, color = TextSecondary)
+
+            // ── Totals ──
+            item {
+                Column(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatTile(totals.present.toString(), "Present", Modifier.weight(1f).height(100.dp), container = Lime)
+                        StatTile(totals.absent.toString(), "Absent", Modifier.weight(1f).height(100.dp), container = Coral)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatTile(totals.late.toString(), "Late", Modifier.weight(1f).height(100.dp), container = Sun)
+                        StatTile(totals.leave.toString(), "On leave", Modifier.weight(1f).height(100.dp), container = Volt)
+                    }
+                }
+            }
+
+            // ── Marking actions ──
+            item {
+                Row(
+                    Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    MarkAction(
+                        "Scan QR", "Mark by worker ID", Icons.Filled.QrCodeScanner,
+                        Flame, White, Modifier.weight(1f), onQuickMark,
+                    )
+                    if (isAdmin) {
+                        MarkAction(
+                            "All present", "One tap for everyone", Icons.Filled.DoneAll,
+                            Forest, White, Modifier.weight(1f), onBulkPresent,
+                        )
+                    }
+                }
+            }
+
+            // ── Search ──
+            item {
+                Row(
+                    Modifier
+                        .padding(horizontal = 16.dp)
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(CircleShape)
+                        .background(Surface3)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Search, null, tint = OnDarkMuted, modifier = Modifier.size(19.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Box(Modifier.weight(1f)) {
+                        if (search.isEmpty()) {
+                            Text("Search worker", style = SwType.Body, color = OnDarkFaint)
+                        }
+                        BasicTextField(
+                            value = search,
+                            onValueChange = onSearch,
+                            singleLine = true,
+                            textStyle = SwType.Body.copy(color = OnDark),
+                            cursorBrush = SolidColor(Flame),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (search.isNotEmpty()) {
+                        Icon(
+                            Icons.Filled.Close, "Clear search", tint = OnDarkMuted,
+                            modifier = Modifier.size(18.dp).clickable { onSearch("") },
+                        )
+                    }
+                }
+            }
+
+            if (rows.isEmpty()) {
+                item {
+                    EmptyState(
+                        Icons.Filled.Groups,
+                        if (search.isBlank()) "No active workers" else "No match",
+                        if (search.isBlank()) {
+                            "Add workers to start marking attendance."
+                        } else {
+                            "Nothing matches “$search”."
+                        },
+                    )
+                }
+            } else {
+                items(rows, key = { it.worker.id }) { row ->
+                    Box(Modifier.padding(horizontal = 16.dp)) {
+                        AttendanceRow(
+                            worker = row.worker,
+                            record = row.record,
+                            onCall = { onCall(row.worker) },
+                            onMark = { onMarkWorker(row.worker) },
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-// ── Date selector ─────────────────────────────────────────────────────────────
+/**
+ * Horizontal day selector. Shows a fortnight ending a few days after the
+ * selected date so the current day sits roughly centre, with today called out.
+ */
 @Composable
-private fun DateSelector(label: String, onPrev: () -> Unit, onNext: () -> Unit, onToday: () -> Unit) {
+private fun DayStrip(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
+    val today = remember { LocalDate.now() }
+    val days = remember(selected) { (-5L..3L).map { selected.plusDays(it) } }
     Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SquareIconButton(Icons.Filled.ChevronLeft, "Previous day", onPrev)
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = CardBackground,
-            border = BorderStroke(1.dp, DividerColor),
-            modifier = Modifier.weight(1f),
-        ) {
-            Row(
-                Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Icon(Icons.Outlined.CalendarMonth, null, tint = PrimaryBlue, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(label, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        days.forEach { day ->
+            val isSelected = day == selected
+            val isToday = day == today
+            val bg = when {
+                isSelected -> Flame
+                isToday -> Surface3
+                else -> Surface1
             }
-        }
-        SquareIconButton(Icons.Filled.ChevronRight, "Next day", onNext)
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = CardBackground,
-            border = BorderStroke(1.dp, PrimaryBlue),
-            modifier = Modifier.clickable(onClick = onToday),
-        ) {
-            Box(Modifier.height(40.dp).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                Text("Today", fontSize = 13.sp, color = PrimaryBlue, fontWeight = FontWeight.Medium)
-            }
-        }
-    }
-}
-
-@Composable
-private fun SquareIconButton(icon: ImageVector, desc: String, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = CardBackground,
-        border = BorderStroke(1.dp, DividerColor),
-        modifier = Modifier.clickable(onClick = onClick),
-    ) {
-        Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, desc, tint = Navy)
-        }
-    }
-}
-
-// ── KPI cards ─────────────────────────────────────────────────────────────────
-@Composable
-private fun KpiCards(present: Int, absent: Int, late: Int, leave: Int, overtime: Int, expected: Int) {
-    data class Kpi(val title: String, val count: Int, val color: Color, val bg: Color, val icon: ImageVector)
-    val cards = listOf(
-        Kpi("Present", present, Success, SuccessBg, Icons.Outlined.HowToReg),
-        Kpi("Absent", absent, Danger, DangerBg, Icons.Outlined.PersonOff),
-        Kpi("Late", late, Warning, WarningBg, Icons.Outlined.Schedule),
-        Kpi("On Leave", leave, Purple, PurpleBg, Icons.Outlined.PersonOutline),
-        Kpi("Overtime", overtime, PrimaryBlue, IconBlueBg, Icons.Outlined.MoreTime),
-    )
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(cards) { kpi ->
-            val pct = if (expected > 0) "%.1f%%".format(kpi.count * 100.0 / expected) else "0%"
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                elevation = CardDefaults.cardElevation(0.dp),
-                border = CardBorder,
-                modifier = Modifier.width(104.dp),
-            ) {
-                Column(Modifier.padding(12.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(kpi.bg),
-                            contentAlignment = Alignment.Center,
-                        ) { Icon(kpi.icon, null, tint = kpi.color, modifier = Modifier.size(16.dp)) }
-                        Spacer(Modifier.width(6.dp))
-                        Text(kpi.title, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(kpi.count.toString(), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Navy)
-                    Text(pct, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = kpi.color)
-                }
-            }
-        }
-    }
-}
-
-// ── Mark attendance methods ───────────────────────────────────────────────────
-@Composable
-private fun MarkAttendanceCard(isAdmin: Boolean, onQuickMark: () -> Unit, onBulkPresent: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = BackgroundColor),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text("Mark Attendance", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-            Text("Scan a code, look up by worker ID, or tap a worker below.", fontSize = 12.sp, color = TextSecondary)
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                MethodCard("QR / ID Scan", Icons.Outlined.QrCodeScanner, PrimaryBlue, Modifier.weight(1f), onQuickMark)
-                MethodCard("By Worker ID", Icons.Outlined.HowToReg, Success, Modifier.weight(1f), onQuickMark)
-                if (isAdmin) {
-                    MethodCard("All Present", Icons.Outlined.DoneAll, Warning, Modifier.weight(1f), onBulkPresent)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MethodCard(title: String, icon: ImageVector, tint: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = CardBackground,
-        border = BorderStroke(1.dp, DividerColor),
-        modifier = modifier.clickable(onClick = onClick),
-    ) {
-        Column(
-            Modifier.padding(vertical = 16.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(8.dp))
-            Text(
-                title, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Navy,
-                maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
-    }
-}
-
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-@Composable
-private fun AttendanceTabs(selected: Int, onSelect: (Int) -> Unit) {
-    val tabs = listOf("Worker List", "Summary")
-    Row(Modifier.fillMaxWidth()) {
-        tabs.forEachIndexed { index, title ->
-            val active = index == selected
+            val fg = if (isSelected) White else OnDark
             Column(
-                Modifier.weight(1f).clickable { onSelect(index) },
+                Modifier
+                    .width(58.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(bg)
+                    .clickable { onSelect(day) }
+                    .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    title, fontSize = 14.sp,
-                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (active) PrimaryBlue else TextSecondary,
-                    modifier = Modifier.padding(vertical = 10.dp),
+                    day.format(DateTimeFormatter.ofPattern("EEE")).uppercase(),
+                    style = SwType.Label,
+                    color = if (isSelected) White.copy(alpha = 0.85f) else OnDarkMuted,
                 )
-                HorizontalDivider(
-                    color = if (active) PrimaryBlue else DividerColor,
-                    thickness = if (active) 3.dp else 1.dp,
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    day.dayOfMonth.toString().padStart(2, '0'),
+                    style = SwType.Title.copy(fontSize = 17.sp),
+                    color = fg,
                 )
-            }
-        }
-    }
-}
-
-// ── Search + export ───────────────────────────────────────────────────────────
-@Composable
-private fun SearchExportRow(query: String, onQueryChange: (String) -> Unit, onExport: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            placeholder = { Text("Search by name or ID", fontSize = 13.sp, color = TextSecondary) },
-            singleLine = true,
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = CardBackground,
-                unfocusedContainerColor = CardBackground,
-                focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = DividerColor,
-            ),
-            modifier = Modifier.weight(1f).height(52.dp),
-        )
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = CardBackground,
-            border = BorderStroke(1.dp, DividerColor),
-            modifier = Modifier.clickable(onClick = onExport),
-        ) {
-            Row(
-                Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Outlined.FileDownload, null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Export", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Navy)
-            }
-        }
-    }
-}
-
-// ── Worker table ──────────────────────────────────────────────────────────────
-@Composable
-private fun WorkerListHeaderRow() {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text("Worker", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(1.7f))
-        Text("Status", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(0.9f))
-        Text("In", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(0.8f))
-        Text("Out", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(0.8f))
-        Text("Hrs", fontSize = 12.sp, color = TextSecondary, modifier = Modifier.weight(0.9f))
-        Text("", modifier = Modifier.weight(0.6f))
-    }
-}
-
-@Composable
-private fun WorkerRow(worker: Worker, record: AttendanceRecord?, onCall: () -> Unit, onMark: () -> Unit) {
-    val timeFmt = remember { DateTimeFormatter.ofPattern("hh:mm a") }
-    val status = record?.status
-    val (label, color, bg) = statusVisual(status)
-
-    Row(
-        Modifier.fillMaxWidth().height(72.dp).clickable(onClick = onMark),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1.7f), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(CircleShape).background(AvatarBlueBg), contentAlignment = Alignment.Center) {
-                LocalImage(
-                    path = worker.profileImage,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp).clip(CircleShape),
-                    fallback = { Text(worker.fullName.take(1), fontWeight = FontWeight.Bold, color = PrimaryBlue) },
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Column {
-                Text(worker.fullName, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Navy, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${worker.workerCode} • ${worker.position}", fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Box(Modifier.weight(0.9f)) { StatusChip(label, color, bg) }
-        Text(
-            record?.checkInTime?.format(timeFmt) ?: "--", fontSize = 11.sp,
-            color = if (status == AttendanceStatus.LATE) Warning else Navy,
-            modifier = Modifier.weight(0.8f),
-        )
-        Text(record?.checkOutTime?.format(timeFmt) ?: "--", fontSize = 11.sp, color = Navy, modifier = Modifier.weight(0.8f))
-        Column(Modifier.weight(0.9f)) {
-            Text(hoursLabel(record), fontSize = 11.sp, color = Navy)
-            val ot = record?.overtimeMinutes ?: 0
-            if (ot > 0) Text("+${hm(ot)}", fontSize = 10.sp, color = Success)
-        }
-        Row(Modifier.weight(0.6f), verticalAlignment = Alignment.CenterVertically) {
-            if (worker.phone.isNotBlank()) {
-                Icon(
-                    Icons.Outlined.Call, "Call ${worker.fullName}",
-                    tint = PrimaryBlue,
-                    modifier = Modifier.size(18.dp).clickable(onClick = onCall),
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Icon(
-                Icons.Filled.MoreVert, "Mark ${worker.fullName}",
-                tint = TextSecondary,
-                modifier = Modifier.size(18.dp).clickable(onClick = onMark),
-            )
-        }
-    }
-}
-
-@Composable
-private fun StatusChip(label: String, color: Color, bg: Color) {
-    Surface(shape = RoundedCornerShape(6.dp), color = bg) {
-        Text(
-            label, fontSize = 10.sp, fontWeight = FontWeight.Medium, color = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-    }
-}
-
-// ── Summary strip ─────────────────────────────────────────────────────────────
-@Composable
-private fun SummaryStrip(total: Int, present: Int, absent: Int, late: Int, leave: Int, overtime: Int) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Row(Modifier.fillMaxWidth()) {
-                SummaryItem("Total Workers", total, null, Icons.Outlined.CalendarMonth, PrimaryBlue, total, Modifier.weight(1f))
-                SummaryItem("Present", present, present, Icons.Outlined.HowToReg, Success, total, Modifier.weight(1f))
-                SummaryItem("Absent", absent, absent, Icons.Outlined.PersonOff, Danger, total, Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth()) {
-                SummaryItem("Late", late, late, Icons.Outlined.Schedule, Warning, total, Modifier.weight(1f))
-                SummaryItem("On Leave", leave, leave, Icons.Outlined.PersonOutline, Purple, total, Modifier.weight(1f))
-                SummaryItem("Overtime", overtime, overtime, Icons.Outlined.MoreTime, PrimaryBlue, total, Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryItem(label: String, value: Int, pctOf: Int?, icon: ImageVector, tint: Color, total: Int, modifier: Modifier = Modifier) {
-    Row(modifier.padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, DividerColor, RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center,
-        ) { Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp)) }
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(label, fontSize = 10.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value.toString(), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Navy)
-                if (pctOf != null && total > 0) {
-                    Spacer(Modifier.width(3.dp))
-                    Text("(%.0f%%)".format(pctOf * 100.0 / total), fontSize = 10.sp, color = TextSecondary)
+                if (isToday) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "Today",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) White else Flame,
+                    )
                 }
             }
         }
     }
 }
 
-// ── Mark dialog (worker tap / more) ───────────────────────────────────────────
 @Composable
-private fun MarkDialog(worker: Worker, isAdmin: Boolean, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+private fun MarkAction(
+    label: String,
+    sub: String,
+    icon: ImageVector,
+    container: Color,
+    foreground: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    SwCard(modifier.height(104.dp), container = container, onClick = onClick) {
+        Column(
+            Modifier.fillMaxSize().padding(14.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Icon(icon, null, tint = foreground, modifier = Modifier.size(23.dp))
+            Column {
+                Text(label, style = SwType.Title.copy(fontSize = 15.sp), color = foreground, maxLines = 1)
+                Text(
+                    sub, style = SwType.Caption.copy(fontSize = 11.sp),
+                    color = foreground.copy(alpha = 0.72f),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttendanceRow(
+    worker: Worker,
+    record: AttendanceRecord?,
+    onCall: () -> Unit,
+    onMark: () -> Unit,
+) {
+    val accent = record?.let { statusAccent(it.status) } ?: OnDarkFaint
+    SwCard(Modifier.fillMaxWidth(), onClick = onMark) {
+        Row(
+            Modifier.fillMaxWidth().padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.width(5.dp).height(66.dp).background(accent))
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f).padding(vertical = 13.dp)) {
+                Text(
+                    worker.fullName, style = SwType.Title.copy(fontSize = 15.sp), color = OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    listOfNotNull(
+                        worker.workerCode.takeIf { it.isNotBlank() },
+                        record?.checkInTime?.format(DateTimeFormatter.ofPattern("hh:mm a")),
+                        record?.lateMinutes?.takeIf { it > 0 }?.let { "$it min late" },
+                        record?.overtimeMinutes?.takeIf { it > 0 }?.let { "OT ${it / 60}h ${it % 60}m" },
+                    ).joinToString("  ·  ").ifBlank { worker.position },
+                    style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).background(Surface3)
+                    .clickable(onClick = onCall),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Phone, "Call ${worker.fullName}", tint = OnDarkMuted, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(9.dp))
+            Box(
+                Modifier.clip(CircleShape)
+                    .background(if (record == null) Surface3 else accent.copy(alpha = 0.18f))
+                    .padding(horizontal = 11.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    record?.status?.replaceFirstChar { it.uppercase() } ?: "Mark",
+                    fontSize = 10.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (record == null) OnDarkMuted else accent,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MarkDialog(
+    worker: Worker,
+    isAdmin: Boolean,
+    onDismiss: () -> Unit,
+    onPick: (String) -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(worker.fullName, fontWeight = FontWeight.SemiBold) },
-        text = {
+        containerColor = Surface2,
+        titleContentColor = OnDark,
+        title = {
             Column {
-                Text("Tap a status. Tapping Present again checks the worker out.", fontSize = 13.sp, color = TextSecondary)
-                Spacer(Modifier.height(12.dp))
-                StatusChoice("Present / Check-out", Success) { onPick(AttendanceStatus.PRESENT) }
-                StatusChoice("Late", Warning) { onPick(AttendanceStatus.LATE) }
-                if (isAdmin) {
-                    StatusChoice("Absent", Danger) { onPick(AttendanceStatus.ABSENT) }
-                    StatusChoice("On Leave", Purple) { onPick(AttendanceStatus.LEAVE) }
-                }
+                Text(worker.fullName, style = SwType.Title.copy(fontSize = 17.sp), color = OnDark)
+                Text(worker.workerCode, style = SwType.Caption, color = OnDarkMuted)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                StatusChoice("Present", Lime) { onPick(AttendanceStatus.PRESENT) }
+                StatusChoice("Late", Sun) { onPick(AttendanceStatus.LATE) }
+                StatusChoice("Absent", Coral) { onPick(AttendanceStatus.ABSENT) }
+                if (isAdmin) StatusChoice("On leave", Volt) { onPick(AttendanceStatus.LEAVE) }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = OnDarkMuted) } },
     )
 }
 
 @Composable
 private fun StatusChoice(label: String, color: Color, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp).clip(RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = 0.12f)).clickable(onClick = onClick).padding(14.dp),
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(color)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(10.dp).background(color, CircleShape))
+        Icon(Icons.Filled.Checklist, null, tint = OnBright, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Navy)
+        Text(label, style = SwType.Title.copy(fontSize = 15.sp), color = OnBright)
     }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-private fun statusVisual(status: String?): Triple<String, Color, Color> = when (status) {
-    AttendanceStatus.PRESENT -> Triple("Present", Success, SuccessBg)
-    AttendanceStatus.LATE -> Triple("Late", Warning, WarningBg)
-    AttendanceStatus.ABSENT -> Triple("Absent", Danger, DangerBg)
-    AttendanceStatus.LEAVE -> Triple("Leave", Purple, PurpleBg)
-    else -> Triple("—", TextSecondary, DividerColor)
-}
-
-private fun hoursLabel(record: AttendanceRecord?): String {
-    val minutes = record?.workedMinutes ?: 0
-    return if (minutes <= 0) "--" else hm(minutes)
-}
-
-private fun hm(minutes: Int): String = "%02dh %02dm".format(minutes / 60, minutes % 60)
 
 private fun dial(context: android.content.Context, phone: String) {
     if (phone.isBlank()) return
     runCatching {
-        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone")))
+        context.startActivity(
+            android.content.Intent(
+                android.content.Intent.ACTION_DIAL,
+                android.net.Uri.parse("tel:$phone"),
+            ),
+        )
     }
 }

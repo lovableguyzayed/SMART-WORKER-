@@ -20,6 +20,7 @@ import com.example.data.model.ClosureDay
 import com.example.data.model.PayTypes
 import com.example.data.model.User
 import com.example.data.model.Worker
+import com.example.screens.AttendanceContent
 import com.example.screens.DashboardContent
 import com.example.screens.WorkersContent
 import com.example.ui.MeterRow
@@ -37,6 +38,7 @@ import com.example.ui.theme.SmartWorkerTheme
 import com.example.ui.theme.Sun
 import com.example.ui.theme.Surface1
 import com.example.ui.theme.Volt
+import com.example.ui.vm.AttendanceViewModel
 import com.example.ui.vm.DashboardViewModel
 import com.example.ui.vm.WorkersViewModel
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -185,7 +187,32 @@ class UiScreenshotTest {
     }
 
     @Test
-    fun designSystem() = shot("04-design-system") {
+    fun attendance() = shot("04-attendance") {
+        AttendanceContent(
+            date = LocalDate.of(2026, 11, 4),
+            rows = listOf(
+                AttendanceViewModel.Row(worker(1, "Suresh Patil", "MA001"), record(1, AttendanceStatus.PRESENT, 8)),
+                AttendanceViewModel.Row(worker(2, "Anita Deshmukh", "MA002"), record(2, AttendanceStatus.LATE, 9, late = 24)),
+                AttendanceViewModel.Row(worker(3, "Imran Shaikh", "CA014"), record(3, AttendanceStatus.PRESENT, 8)),
+                AttendanceViewModel.Row(worker(4, "Vikram Rathod", "EL007"), record(4, AttendanceStatus.ABSENT, 0)),
+                AttendanceViewModel.Row(worker(5, "Priya Nair", "MA009"), null),
+            ),
+            totals = AttendanceViewModel.Totals(present = 31, absent = 6, late = 4, leave = 2, expected = 48),
+            search = "",
+            companyName = "Shreeji Constructions",
+            isAdmin = true,
+            onSetDate = {},
+            onSearch = {},
+            onQuickMark = {},
+            onBulkPresent = {},
+            onMarkWorker = {},
+            onCall = {},
+            onExport = {},
+        )
+    }
+
+    @Test
+    fun designSystem() = shot("05-design-system") {
         Column(
             Modifier.fillMaxSize().background(Ink).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
