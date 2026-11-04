@@ -45,6 +45,7 @@ import com.example.ui.theme.OnBright
 import com.example.ui.theme.OnDark
 import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.Surface1
+import com.example.ui.theme.Surface2
 import com.example.ui.theme.Surface3
 import com.example.ui.theme.SwType
 import com.example.ui.theme.White
@@ -97,9 +98,7 @@ fun StatTile(
     caption: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
-    val bright = container.luminanceIsBright()
-    val fg = if (bright) OnBright else OnDark
-    val sub = if (bright) OnBright.copy(alpha = 0.62f) else OnDarkMuted
+    val (fg, sub) = contentColorsFor(container)
     SwCard(modifier = modifier, container = container, onClick = onClick) {
         Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(label.uppercase(), style = SwType.Label, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -112,9 +111,28 @@ fun StatTile(
     }
 }
 
-/** Rough perceptual check so a tile can pick ink-or-white content itself. */
+/**
+ * Rough perceptual check so a tile can pick ink-or-white content itself. The
+ * threshold sits at 0.5 deliberately: Coral lands just above it and takes ink,
+ * matching the reference decks' coral cards, while Flame lands just below and
+ * keeps white.
+ */
 internal fun Color.luminanceIsBright(): Boolean =
-    (0.299f * red + 0.587f * green + 0.114f * blue) > 0.6f
+    (0.299f * red + 0.587f * green + 0.114f * blue) > 0.5f
+
+/**
+ * Foreground and subdued-foreground for content sitting on [container].
+ *
+ * A grey like [OnDarkMuted] only reads as "subdued" against a neutral surface —
+ * on a saturated tile it turns muddy, so there the subdued tone is the
+ * foreground at reduced alpha instead.
+ */
+internal fun contentColorsFor(container: Color): Pair<Color, Color> = when {
+    container == Surface1 || container == Surface2 || container == Surface3 ->
+        OnDark to OnDarkMuted
+    container.luminanceIsBright() -> OnBright to OnBright.copy(alpha = 0.72f)
+    else -> White to White.copy(alpha = 0.80f)
+}
 
 /** Selectable pill — date strips, filters, segmented controls. */
 @Composable

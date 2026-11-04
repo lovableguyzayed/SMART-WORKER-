@@ -462,7 +462,11 @@ private fun AttendanceRow(
                 Text(
                     listOfNotNull(
                         worker.workerCode.takeIf { it.isNotBlank() },
-                        record?.checkInTime?.format(DateTimeFormatter.ofPattern("hh:mm a")),
+                        // An absent or on-leave worker has no meaningful arrival
+                        // time, even if a stale one is still on the record.
+                        record?.checkInTime
+                            ?.takeIf { record.status == AttendanceStatus.PRESENT || record.status == AttendanceStatus.LATE }
+                            ?.format(DateTimeFormatter.ofPattern("hh:mm a")),
                         record?.lateMinutes?.takeIf { it > 0 }?.let { "$it min late" },
                         record?.overtimeMinutes?.takeIf { it > 0 }?.let { "OT ${it / 60}h ${it % 60}m" },
                     ).joinToString("  ·  ").ifBlank { worker.position },

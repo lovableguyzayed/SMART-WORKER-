@@ -46,6 +46,7 @@ import com.example.data.model.PayTypes
 import com.example.data.model.Worker
 import com.example.ui.EmptyState
 import com.example.ui.StatTile
+import com.example.ui.contentColorsFor
 import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
 import com.example.ui.theme.Coral
@@ -291,7 +292,9 @@ private fun WorkerCard(worker: Worker, onClick: () -> Unit) {
                         ) {
                             Text(
                                 worker.fullName.take(1).uppercase(Locale.US),
-                                color = OnBright, fontSize = 21.sp, fontWeight = FontWeight.Bold,
+                                color = contentColorsFor(accent).first,
+                                fontSize = 21.sp,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                     }
@@ -367,8 +370,15 @@ private val AvatarPalette = listOf(Flame, Volt, Lime, Sun, Coral, Mint, Purple)
 
 internal fun accentFor(key: String): Color {
     if (key.isEmpty()) return Flame
-    val hash = key.fold(7) { acc, c -> acc * 31 + c.code }
-    return AvatarPalette[((hash % AvatarPalette.size) + AvatarPalette.size) % AvatarPalette.size]
+    // A plain 31-based string hash clusters badly across short codes that share
+    // a prefix (MA001, MA002, MA009 landing on one colour), so finish with an
+    // avalanche step before picking the bucket.
+    var h = key.hashCode()
+    h = h xor (h ushr 16)
+    h *= 0x7feb352d.toInt()
+    h = h xor (h ushr 15)
+    val n = AvatarPalette.size
+    return AvatarPalette[((h % n) + n) % n]
 }
 
 private fun payRateLabel(w: Worker): String = when (w.payType) {
