@@ -37,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,6 +50,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -361,10 +363,20 @@ internal fun AttendanceContent(
 private fun DayStrip(selected: LocalDate, onSelect: (LocalDate) -> Unit) {
     val today = remember { LocalDate.now() }
     val days = remember(selected) { (-5L..3L).map { selected.plusDays(it) } }
+    // The window re-centres on each selection, so the selected pill always sits
+    // at the same index — scroll it into view or it hides at the right edge.
+    val scroll = rememberScrollState()
+    val stepPx = with(LocalDensity.current) { (58.dp + 8.dp).roundToPx() }
+    val selectedIndex = days.indexOf(selected)
+    LaunchedEffect(selected) {
+        if (selectedIndex >= 0) {
+            scroll.animateScrollTo(((selectedIndex - 2) * stepPx).coerceAtLeast(0))
+        }
+    }
     Row(
         Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scroll)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

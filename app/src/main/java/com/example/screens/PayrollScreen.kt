@@ -36,6 +36,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -606,8 +608,18 @@ private fun SiteSelector(
 private fun MonthStrip(selected: YearMonth, onSelect: (YearMonth) -> Unit) {
     val now = remember { YearMonth.now() }
     val months = remember(selected) { (-4L..1L).map { selected.plusMonths(it) } }
+    // The window re-centres on each selection, so the selected pill always sits
+    // at the same index — scroll it into view or it hides at the right edge.
+    val scroll = rememberScrollState()
+    val stepPx = with(LocalDensity.current) { (74.dp + 8.dp).roundToPx() }
+    val selectedIndex = months.indexOf(selected)
+    LaunchedEffect(selected) {
+        if (selectedIndex >= 0) {
+            scroll.animateScrollTo(((selectedIndex - 2) * stepPx).coerceAtLeast(0))
+        }
+    }
     Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth().horizontalScroll(scroll).padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         months.forEach { m ->
