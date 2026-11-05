@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,18 +49,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,29 +78,41 @@ import com.example.data.repo.PayrollRepository
 import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
 import com.example.ui.StatusPill
+import com.example.ui.SwCard
 import com.example.ui.SwDateField
 import com.example.ui.SwFormDropdown
 import com.example.ui.SwFormField
 import com.example.ui.SwTopBar
 import com.example.ui.collectAsStateLifecycle
+import com.example.ui.contentColorsFor
 import com.example.ui.theme.AvatarBlueBg
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.CardBackground
+import com.example.ui.theme.Coral
 import com.example.ui.theme.Danger
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Hairline
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
 import com.example.ui.theme.Navy
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.Purple
 import com.example.ui.theme.SubtleDivider
 import com.example.ui.theme.Success
+import com.example.ui.theme.Surface3
+import com.example.ui.theme.SwType
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.ui.vm.WorkerAdminViewModel
 import com.example.util.LocalImage
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.YearMonth
 
 @Composable
 fun SmartWorkerWorkerDetailsScreen(
@@ -165,7 +178,7 @@ fun SmartWorkerWorkerDetailsScreen(
     }
 
     Scaffold(
-        containerColor = BackgroundColor,
+        containerColor = Ink,
         topBar = {
             SwTopBar(
                 title = "Worker Details",
@@ -448,24 +461,21 @@ private fun ActionTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.height(72.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
+    SwCard(modifier.height(78.dp), onClick = onClick) {
         Column(
-            Modifier.fillMaxSize().padding(6.dp),
+            Modifier.fillMaxSize().padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.height(4.dp))
+            Box(
+                Modifier.size(32.dp).clip(RoundedCornerShape(11.dp)).background(tint.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, null, tint = tint, modifier = Modifier.size(17.dp)) }
+            Spacer(Modifier.height(6.dp))
             Text(
-                label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = Navy,
-                textAlign = TextAlign.Center, lineHeight = 13.sp,
+                label, fontSize = 10.5.sp, fontWeight = FontWeight.SemiBold, color = OnDark,
+                textAlign = TextAlign.Center, lineHeight = 12.sp, maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -473,16 +483,10 @@ private fun ActionTile(
 
 @Composable
 private fun DetailsSection(title: String, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-            Spacer(Modifier.height(8.dp))
+    SwCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(title.uppercase(), style = SwType.Label, color = OnDarkMuted)
+            Spacer(Modifier.height(10.dp))
             content()
         }
     }
@@ -647,42 +651,51 @@ private fun ProfileHeader(w: Worker, onCall: () -> Unit) {
         elevation = CardDefaults.cardElevation(0.dp),
         border = CardBorder,
     ) {
+        val accent = accentFor(w.workerCode.ifBlank { w.fullName })
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(64.dp).background(AvatarBlueBg, CircleShape),
+                Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)).background(accent),
                 contentAlignment = Alignment.Center,
             ) {
                 LocalImage(
                     path = w.profileImage,
                     contentDescription = "Photo of ${w.fullName}",
-                    modifier = Modifier.size(64.dp).clip(CircleShape),
+                    modifier = Modifier.size(64.dp).clip(RoundedCornerShape(20.dp)),
                 ) {
-                    Icon(Icons.Filled.Person, null, tint = PrimaryBlue, modifier = Modifier.size(38.dp))
+                    Text(
+                        w.fullName.take(1).uppercase(),
+                        color = contentColorsFor(accent).first,
+                        fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                    )
                 }
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(w.fullName, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy)
+                    Text(
+                        w.fullName, style = SwType.Title.copy(fontSize = 17.sp), color = OnDark,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
                     Spacer(Modifier.size(8.dp))
-                    StatusPill(if (w.status == "active") "Active" else "Inactive", if (w.status == "active") Success else TextSecondary)
+                    StatusPill(if (w.status == "active") "Active" else "Inactive", if (w.status == "active") Lime else OnDarkFaint)
                 }
                 Spacer(Modifier.size(3.dp))
-                Text("ID: ${w.workerCode} • ${w.position}", fontSize = 12.sp, color = TextSecondary)
+                Text("${w.workerCode}  ·  ${w.position}", style = SwType.Caption, color = OnDarkMuted)
                 if (w.phone.isNotBlank()) {
                     Spacer(Modifier.size(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Call, "Call ${w.fullName}", tint = PrimaryBlue, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.size(4.dp))
-                        Text(w.phone, fontSize = 12.sp, color = PrimaryBlue)
+                        Icon(Icons.Filled.Call, "Call ${w.fullName}", tint = Flame, modifier = Modifier.size(13.dp))
+                        Spacer(Modifier.size(5.dp))
+                        Text(w.phone, style = SwType.Caption, color = Flame)
                     }
                 }
             }
             if (w.phone.isNotBlank()) {
                 Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(AvatarBlueBg).clickable(onClick = onCall),
+                    Modifier.size(42.dp).clip(CircleShape).background(Surface3).clickable(onClick = onCall),
                     contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Filled.Call, "Call", tint = PrimaryBlue, modifier = Modifier.size(20.dp)) }
+                ) { Icon(Icons.Filled.Call, "Call", tint = Flame, modifier = Modifier.size(19.dp)) }
             }
         }
     }
@@ -691,10 +704,10 @@ private fun ProfileHeader(w: Worker, onCall: () -> Unit) {
 @Composable
 private fun MiniStat(label: String, value: Int, color: Color, modifier: Modifier = Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = 0.10f)).padding(vertical = 10.dp),
+        modifier.clip(RoundedCornerShape(15.dp)).background(color.copy(alpha = 0.15f)).padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value.toString(), fontSize = 17.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(value.toString(), style = SwType.StatSmall.copy(fontSize = 19.sp), color = color)
         Text(label, fontSize = 10.sp, color = color, maxLines = 1)
     }
 }
@@ -702,11 +715,11 @@ private fun MiniStat(label: String, value: Int, color: Color, modifier: Modifier
 @Composable
 private fun MiniStatText(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
-        modifier.clip(RoundedCornerShape(12.dp)).background(PrimaryBlue.copy(alpha = 0.08f)).padding(vertical = 10.dp),
+        modifier.clip(RoundedCornerShape(15.dp)).background(Surface3).padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryBlue)
-        Text(label, fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+        Text(value, style = SwType.StatSmall.copy(fontSize = 17.sp), color = OnDark)
+        Text(label, fontSize = 10.sp, color = OnDarkMuted, maxLines = 1)
     }
 }
 
@@ -763,26 +776,23 @@ private fun jobRows(w: Worker): List<Pair<String, String>> {
 
 @Composable
 private fun InfoCard(title: String, rows: List<Pair<String, String>>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-            Spacer(Modifier.height(8.dp))
+    SwCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(title.uppercase(), style = SwType.Label, color = OnDarkMuted)
+            Spacer(Modifier.height(6.dp))
             rows.forEachIndexed { i, (label, value) ->
                 Row(
-                    Modifier.fillMaxWidth().height(44.dp),
+                    Modifier.fillMaxWidth().height(42.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, fontSize = 14.sp, color = TextSecondary)
-                    Text(value, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Navy)
+                    Text(label, style = SwType.Body.copy(fontSize = 13.sp), color = OnDarkMuted)
+                    Text(
+                        value, style = SwType.Title.copy(fontSize = 13.5.sp), color = OnDark,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                if (i < rows.lastIndex) HorizontalDivider(color = SubtleDivider)
+                if (i < rows.lastIndex) HorizontalDivider(color = Hairline)
             }
         }
     }
@@ -791,25 +801,23 @@ private fun InfoCard(title: String, rows: List<Pair<String, String>>) {
 @Composable
 private fun AttendanceMiniRow(r: AttendanceRecord, fmt: DateTimeFormatter) {
     Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text(r.date.format(fmt), fontSize = 13.sp, color = Navy)
-        val (label, color) = when (r.status) {
-            "present" -> "Present" to Success
-            "late" -> "Late" to Warning
-            "absent" -> "Absent" to Danger
-            else -> "Leave" to Purple
-        }
-        StatusPill(label, color)
+        Text(r.date.format(fmt), style = SwType.Body.copy(fontSize = 13.sp), color = OnDark)
+        StatusPill(r.status.replaceFirstChar { it.uppercase() }, statusAccent(r.status))
     }
 }
 
 @Composable
 private fun TxnMiniRow(t: WorkerTransaction, fmt: DateTimeFormatter) {
     Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-        Text("${com.example.data.model.TxnTypes.LABELS[t.txnType] ?: t.txnType} • ${t.date.format(fmt)}", fontSize = 13.sp, color = Navy)
         Text(
-            "${if (t.isEarning) "+" else "-"}₹${"%,.0f".format(t.amount)}",
-            fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-            color = if (t.isEarning) Success else Danger,
+            "${com.example.data.model.TxnTypes.LABELS[t.txnType] ?: t.txnType}  ·  ${t.date.format(fmt)}",
+            style = SwType.Body.copy(fontSize = 13.sp), color = OnDark,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            "${if (t.isEarning) "+" else "\u2212"}\u20B9${"%,.0f".format(t.amount)}",
+            style = SwType.Title.copy(fontSize = 13.5.sp),
+            color = if (t.isEarning) Lime else Coral,
         )
     }
 }

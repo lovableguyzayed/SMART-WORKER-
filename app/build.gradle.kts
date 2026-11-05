@@ -125,6 +125,17 @@ android {
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
+// The Roborazzi screenshot tests boot Robolectric, which downloads an
+// android-all runtime jar on first use. That download is a network dependency
+// the ordinary build should not carry — a transient failure there would fail
+// the APK build for reasons unrelated to the code. They run only when asked:
+//   ./gradlew testDebugUnitTest -PincludeScreenshots=true -Proborazzi.test.record=true
+tasks.withType<Test>().configureEach {
+  if (!project.hasProperty("includeScreenshots")) {
+    exclude("com/example/screenshots/**")
+  }
+}
+
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
 // to match the convention used in Web projects.
 secrets {

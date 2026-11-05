@@ -36,7 +36,11 @@ jobs:
       # Roborazzi only writes images when record mode is on; the regular test
       # job runs the same tests with capture disabled.
       - name: Record screenshots
-        run: ./gradlew testDebugUnitTest -Proborazzi.test.record=true --stacktrace
+        run: >
+          ./gradlew testDebugUnitTest
+          -PincludeScreenshots=true
+          -Proborazzi.test.record=true
+          --stacktrace
 
       - name: Collect PNGs
         if: always()
