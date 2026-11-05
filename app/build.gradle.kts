@@ -24,8 +24,8 @@ val hasReleaseKeystore = keystorePropertiesFile.exists()
 // Semantic versioning: MAJOR.MINOR.PATCH. See defaultConfig for how these
 // become versionName ("2.1.0") and versionCode (20100).
 val versionMajor = 2
-val versionMinor = 1
-val versionPatch = 8
+val versionMinor = 2
+val versionPatch = 0
 
 android {
   namespace = "com.example"
