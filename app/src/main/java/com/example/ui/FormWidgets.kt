@@ -35,8 +35,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.DividerColor
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Hairline
 import com.example.ui.theme.Navy
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.PrimaryBlue
+import com.example.ui.theme.Surface3
 import com.example.ui.theme.TextSecondary
 import java.time.Instant
 import java.time.LocalDate
@@ -61,10 +66,7 @@ fun SwFormField(
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = PrimaryBlue,
-            unfocusedBorderColor = DividerColor,
-        ),
+        colors = swFieldColors(),
     )
 }
 
@@ -88,10 +90,7 @@ fun SwFormDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable),
             shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryBlue,
-                unfocusedBorderColor = DividerColor,
-            ),
+            colors = swFieldColors(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
@@ -123,9 +122,11 @@ fun SwDateField(
         enabled = false,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            disabledBorderColor = DividerColor,
-            disabledTextColor = Navy,
-            disabledLabelColor = TextSecondary,
+            disabledContainerColor = Surface3,
+            disabledBorderColor = Hairline,
+            disabledTextColor = OnDark,
+            disabledLabelColor = OnDarkMuted,
+            disabledTrailingIconColor = OnDarkMuted,
         ),
     )
     if (show) {
@@ -169,7 +170,27 @@ fun SwSwitchRow(
         Switch(
             checked = checked,
             onCheckedChange = onChange,
-            colors = SwitchDefaults.colors(checkedTrackColor = PrimaryBlue),
+            colors = SwitchDefaults.colors(checkedTrackColor = Flame),
         )
     }
 }
+
+/**
+ * One palette for every form field: a filled dark well like the search and
+ * login pills, with the hero accent only on focus.
+ */
+@Composable
+internal fun swFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = OnDark,
+    unfocusedTextColor = OnDark,
+    focusedContainerColor = Surface3,
+    unfocusedContainerColor = Surface3,
+    disabledContainerColor = Surface3,
+    cursorColor = Flame,
+    focusedBorderColor = Flame,
+    unfocusedBorderColor = Hairline,
+    focusedLabelColor = Flame,
+    unfocusedLabelColor = OnDarkMuted,
+    focusedTrailingIconColor = OnDarkMuted,
+    unfocusedTrailingIconColor = OnDarkMuted,
+)
