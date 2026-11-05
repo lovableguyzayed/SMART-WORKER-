@@ -58,6 +58,20 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun NotificationsScreen(vm: NotificationsViewModel, onBack: () -> Unit) {
     val notifications by vm.notifications.collectAsStateLifecycle()
+    NotificationsContent(
+        notifications = notifications,
+        onBack = onBack,
+        onMarkAllRead = vm::markAllRead,
+    )
+}
+
+/** Presentation half — state in, callbacks out, so it renders from fixtures. */
+@Composable
+internal fun NotificationsContent(
+    notifications: List<Notification>,
+    onBack: () -> Unit,
+    onMarkAllRead: () -> Unit,
+) {
     val fmt = DateTimeFormatter.ofPattern("dd MMM, HH:mm")
     val unread = notifications.count { !it.isRead }
 
@@ -82,7 +96,7 @@ fun NotificationsScreen(vm: NotificationsViewModel, onBack: () -> Unit) {
                     if (unread > 0) {
                         Row(
                             Modifier.clip(CircleShape).background(Flame)
-                                .clickable { vm.markAllRead() }
+                                .clickable(onClick = onMarkAllRead)
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {

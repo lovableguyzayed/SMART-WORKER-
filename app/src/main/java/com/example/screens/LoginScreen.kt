@@ -66,14 +66,28 @@ import com.example.ui.vm.AppViewModel
  */
 @Composable
 fun LoginScreen(appVm: AppViewModel) {
+    val error by appVm.loginError.collectAsStateLifecycle()
+    LoginContent(
+        error = error,
+        onClearError = appVm::clearLoginError,
+        onSubmit = { u, p -> appVm.login(u, p) {} },
+    )
+}
+
+/** Presentation half — state in, callbacks out, so it renders from fixtures. */
+@Composable
+internal fun LoginContent(
+    error: String?,
+    onClearError: () -> Unit,
+    onSubmit: (String, String) -> Unit,
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
-    val error by appVm.loginError.collectAsStateLifecycle()
 
     val canSubmit = username.isNotBlank() && password.isNotBlank()
     fun submit() {
-        if (canSubmit) appVm.login(username.trim(), password) {}
+        if (canSubmit) onSubmit(username.trim(), password)
     }
 
     Box(Modifier.fillMaxSize().background(Ink).imePadding()) {
@@ -129,7 +143,7 @@ fun LoginScreen(appVm: AppViewModel) {
                     value = username,
                     onValueChange = {
                         username = it
-                        if (error != null) appVm.clearLoginError()
+                        if (error != null) onClearError()
                     },
                     placeholder = "admin",
                     leading = Icons.Filled.Person,
@@ -141,7 +155,7 @@ fun LoginScreen(appVm: AppViewModel) {
                     value = password,
                     onValueChange = {
                         password = it
-                        if (error != null) appVm.clearLoginError()
+                        if (error != null) onClearError()
                     },
                     placeholder = "••••••••",
                     leading = Icons.Filled.Lock,

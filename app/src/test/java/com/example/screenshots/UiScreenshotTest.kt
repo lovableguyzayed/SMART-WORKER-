@@ -25,8 +25,11 @@ import com.example.data.db.PayrollBatch
 import com.example.data.model.WorkerTransaction
 import com.example.data.repo.PayrollRepository
 import com.example.domain.PayrollCalculator
+import com.example.data.model.Notification
 import com.example.screens.AttendanceContent
 import com.example.screens.DashboardContent
+import com.example.screens.LoginContent
+import com.example.screens.NotificationsContent
 import com.example.screens.PayrollContent
 import com.example.screens.PayrollUiState
 import com.example.screens.WorkersContent
@@ -288,7 +291,28 @@ class UiScreenshotTest {
     }
 
     @Test
-    fun designSystem() = shot("06-design-system") {
+    fun login() = shot("06-login") {
+        LoginContent(error = null, onClearError = {}, onSubmit = { _, _ -> })
+    }
+
+    @Test
+    fun notifications() = shot("07-notifications") {
+        NotificationsContent(
+            // createdAt is passed explicitly: its default is now(), which would
+            // make the rendered timestamps differ on every run.
+            notifications = listOf(
+                Notification(1, "Attendance marked", "Suresh Patil checked in at 08:02 AM", "attendance", false, LocalDateTime.of(2026, 11, 4, 8, 2)),
+                Notification(2, "Attendance marked", "Anita Deshmukh checked in 24 min late", "attendance", false, LocalDateTime.of(2026, 11, 4, 9, 24)),
+                Notification(3, "Backup complete", "48 workers synced to cloud", "sync", true, LocalDateTime.of(2026, 11, 4, 7, 15)),
+                Notification(4, "Payroll generated", "November 2026 · 48 workers", "system", true, LocalDateTime.of(2026, 11, 3, 18, 40)),
+            ),
+            onBack = {},
+            onMarkAllRead = {},
+        )
+    }
+
+    @Test
+    fun designSystem() = shot("08-design-system") {
         Column(
             Modifier.fillMaxSize().background(Ink).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
