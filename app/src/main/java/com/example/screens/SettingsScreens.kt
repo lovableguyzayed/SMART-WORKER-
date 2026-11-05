@@ -1,7 +1,12 @@
 package com.example.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,7 +26,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EventBusy
@@ -48,6 +55,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,23 +79,14 @@ import com.example.ui.theme.Danger
 import com.example.ui.theme.Navy
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.Success
+import com.example.ui.theme.Surface3
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.ui.theme.White
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
-import com.example.ui.theme.AvatarBlueBg
 import com.example.util.ImageStore
 import com.example.util.LocalImage
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  COMPANY SETTINGS  (branding shown on payslips / PDF exports)
@@ -178,7 +178,7 @@ internal fun CompanySettingsContent(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(AvatarBlueBg)
+                    Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(Surface3)
                         .clickable {
                             logoPicker.launch(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)

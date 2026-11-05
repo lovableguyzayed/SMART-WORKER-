@@ -90,7 +90,6 @@ import com.example.ui.SwFormField
 import com.example.ui.SwTopBar
 import com.example.ui.collectAsStateLifecycle
 import com.example.ui.contentColorsFor
-import com.example.ui.theme.AvatarBlueBg
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.CardBackground
 import com.example.ui.theme.Coral
@@ -110,6 +109,7 @@ import com.example.ui.theme.Success
 import com.example.ui.theme.Surface3
 import com.example.ui.theme.SwType
 import com.example.ui.theme.TextSecondary
+import com.example.ui.theme.Volt
 import com.example.ui.theme.Warning
 import com.example.ui.vm.WorkerAdminViewModel
 import com.example.util.LocalImage
@@ -373,7 +373,7 @@ internal fun WorkerDetailsContent(
                             MiniStat("Absent", s.attendance.absentDays, Danger, Modifier.weight(1f))
                             MiniStat("Late", s.attendance.lateDays, Warning, Modifier.weight(1f))
                             MiniStat("Leave", s.attendance.leaveDays, Purple, Modifier.weight(1f))
-                            MiniStat("Paid", s.pay.paidDays, PrimaryBlue, Modifier.weight(1f))
+                            MiniStat("Paid", s.pay.paidDays, Volt, Modifier.weight(1f))
                         }
                     }
                 }
@@ -515,7 +515,10 @@ private fun ActionTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    SwCard(modifier.height(78.dp), onClick = onClick) {
+    // 78dp left roughly one line of room after the icon well, so two-line
+    // labels ("Mark\nAttendance", "Add\nPayment") ellipsised to "Mark…" and
+    // two indistinguishable "Add…" tiles.
+    SwCard(modifier.height(94.dp), onClick = onClick) {
         Column(
             Modifier.fillMaxSize().padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
