@@ -35,12 +35,32 @@ jobs:
 
       # Roborazzi only writes images when record mode is on; the regular test
       # job runs the same tests with capture disabled.
+      # Robolectric fetches an android-all runtime jar into the local Maven
+      # repo on first use. Caching it keeps later runs off the network, which
+      # has failed this job several times.
+      - name: Cache Robolectric runtime jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ runner.os }}-sdk34
+
       - name: Record screenshots
-        run: >
-          ./gradlew testDebugUnitTest
-          -PincludeScreenshots=true
-          -Proborazzi.test.record=true
-          --stacktrace
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::Attempt $attempt"
+            if ./gradlew testDebugUnitTest \
+                 -PincludeScreenshots=true \
+                 -Proborazzi.test.record=true \
+                 --stacktrace; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt failed; the Robolectric jar download is the usual cause."
+            sleep 15
+          done
+          echo "All attempts failed."
+          exit 1
 
       - name: Collect PNGs
         if: always()
