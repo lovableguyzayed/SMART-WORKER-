@@ -70,22 +70,26 @@ import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// ── ID-card palette (matches the design) ──
-private val CardTop = Color(0xFF0A1C46)
-private val CardMid = Color(0xFF15448C)
-private val CardBottom = Color(0xFF1E74EA)
+// ── ID-card palette ──
+// Ported onto the app's dark system: the badge runs from the canvas colour up
+// through an ember mid-tone to the hero accent, so it reads as the same product
+// as the screens around it. The glass fills stay white-translucent — they work
+// over the whole ramp.
+private val CardTop = Color(0xFF0B0B0D)
+private val CardMid = Color(0xFF8A2208)
+private val CardBottom = Color(0xFFFF4A1C)
 private val Glass = Color(0x24FFFFFF)      // translucent white fill
 private val GlassStrong = Color(0x33FFFFFF)
 private val GlassBorder = Color(0x33FFFFFF)
 private val OnCard = Color(0xFFFFFFFF)
 private val OnCardDim = Color(0xB3FFFFFF)   // ~70% white
-private val Verified = Color(0xFF22C55E)
+private val Verified = Color(0xFFC8F23C)
 
 private val dateFmt: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
 /**
  * Digital employee ID card with a scannable QR (payload SMARTWORKER:<code>,
- * read by the Quick Mark scanner). Rendered as a blue gradient badge and
+ * read by the Quick Mark scanner). Rendered as a dark-to-flame badge and
  * exportable to a matching PDF.
  */
 @Composable
@@ -202,7 +206,7 @@ private fun IdCard(w: Worker, company: CompanySetting?) {
                             contentAlignment = Alignment.Center,
                         ) {
                             Box(Modifier.size(26.dp).clip(CircleShape).background(Verified), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Filled.Check, "Active", tint = OnCard, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Filled.Check, "Active", tint = Color(0xFF0B0B0D), modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -290,7 +294,7 @@ private fun exportIdCardPdf(context: Context, company: CompanySetting?, w: Worke
 
     // Gradient background
     val bg = Paint().apply {
-        shader = LinearGradient(0f, 0f, fw, fh, intArrayOf(0xFF0A1C46.toInt(), 0xFF15448C.toInt(), 0xFF1E74EA.toInt()), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
+        shader = LinearGradient(0f, 0f, fw, fh, intArrayOf(0xFF0B0B0D.toInt(), 0xFF8A2208.toInt(), 0xFFFF4A1C.toInt()), floatArrayOf(0f, 0.5f, 1f), Shader.TileMode.CLAMP)
     }
     c.drawRoundRect(RectF(0f, 0f, fw, fh), 28f, 28f, bg)
 
@@ -306,7 +310,7 @@ private fun exportIdCardPdf(context: Context, company: CompanySetting?, w: Worke
     val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = glass }
 
     // Company logo box (top-center)
-    c.drawRoundRect(RectF(fw / 2 - 30, 26f, fw / 2 + 30, 86f), 12f, 12f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x8C0A1C46.toInt() })
+    c.drawRoundRect(RectF(fw / 2 - 30, 26f, fw / 2 + 30, 86f), 12f, 12f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x8C0B0B0D.toInt() })
     ImageStore.loadBitmap(company?.logo, 128)?.let { c.drawBitmap(it, null, RectF(fw / 2 - 30, 26f, fw / 2 + 30, 86f), null) }
 
     // Company name (wrap up to 2 lines, centered)
@@ -341,8 +345,11 @@ private fun exportIdCardPdf(context: Context, company: CompanySetting?, w: Worke
     if (w.status == "active") {
         val bx = photoL + photoSz - 6; val by = photoT + photoSz - 6
         c.drawCircle(bx, by, 16f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white })
-        c.drawCircle(bx, by, 13f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF22C55E.toInt() })
-        val tick = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = white; strokeWidth = 2.5f; style = Paint.Style.STROKE }
+        c.drawCircle(bx, by, 13f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC8F23C.toInt() })
+        // Ink, not white — the badge behind it is now Lime.
+        val tick = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFF0B0B0D.toInt(); strokeWidth = 2.5f; style = Paint.Style.STROKE
+        }
         c.drawLines(floatArrayOf(bx - 6, by, bx - 2, by + 4, bx - 2, by + 4, bx + 6, by - 5), tick)
     }
 
