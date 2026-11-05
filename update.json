@@ -1,8 +1,8 @@
 {
-  "latestVersionCode": 20108,
-  "latestVersionName": "2.1.8",
-  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-15/SmartWorker-release.apk",
-  "releaseNotes": "• Settings now edits Company details and Attendance Users inline, in their own tabs\n• Payroll's Switch Site actually works — pick a site and the worker list, totals, advances, deductions and payroll generation all follow it\n• CSV export is named after the selected site",
+  "latestVersionCode": 20200,
+  "latestVersionName": "2.2.0",
+  "apkUrl": "https://github.com/lovableguyzayed/SMART-WORKER-/releases/download/apk-build-16/SmartWorker-release.apk",
+  "releaseNotes": "• The whole interface is rebuilt on a dark design system — colour now carries meaning, so present, late and absent read at a glance\n• Dashboard leads with today's headline figure and tells you what still needs marking\n• Attendance gains a day strip: tap a date instead of stepping through one at a time\n• Payroll leads with net payable, and the month strip moves between periods in a tap\n• Workers, Quick Mark, Login, Profile and the ID card all rebuilt to match\n• Same data, same login — this installs straight over your current version",
   "forceUpdate": false,
   "minSupportedVersionCode": 1
 }
