@@ -100,7 +100,26 @@ fun CompanySettingsScreen(
 ) {
     val company by vm.company.collectAsStateLifecycle()
     val message by vm.message.collectAsStateLifecycle()
+    CompanySettingsContent(
+        company = company,
+        message = message,
+        embedded = embedded,
+        onBack = onBack,
+        onSave = vm::saveCompany,
+        onDismissMessage = vm::clearMessage,
+    )
+}
 
+/** Presentation half — state in, callbacks out, so it renders from fixtures. */
+@Composable
+internal fun CompanySettingsContent(
+    company: CompanySetting?,
+    message: String?,
+    embedded: Boolean,
+    onBack: () -> Unit,
+    onSave: (CompanySetting) -> Unit,
+    onDismissMessage: () -> Unit,
+) {
     var name by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -196,7 +215,7 @@ fun CompanySettingsScreen(
             Spacer(Modifier.height(8.dp))
             Button(
                 onClick = {
-                    vm.saveCompany(
+                    onSave(
                         CompanySetting(
                             name = name.trim().ifBlank { "SmartWorker" },
                             address = address, phone = phone, email = email,
@@ -214,8 +233,8 @@ fun CompanySettingsScreen(
 
     message?.let {
         AlertDialog(
-            onDismissRequest = vm::clearMessage,
-            confirmButton = { TextButton(onClick = vm::clearMessage) { Text("OK") } },
+            onDismissRequest = onDismissMessage,
+            confirmButton = { TextButton(onClick = onDismissMessage) { Text("OK") } },
             text = { Text(it) },
         )
     }

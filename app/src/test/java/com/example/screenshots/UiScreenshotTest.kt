@@ -15,23 +15,30 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.example.data.db.PayrollBatch
 import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.ClosureDay
+import com.example.data.model.CompanySetting
+import com.example.data.model.Notification
 import com.example.data.model.PayTypes
+import com.example.data.model.Project
+import com.example.data.model.ProjectAssignment
+import com.example.data.model.Site
 import com.example.data.model.User
+import com.example.data.model.WorkTask
 import com.example.data.model.Worker
-import com.example.data.db.PayrollBatch
 import com.example.data.model.WorkerTransaction
 import com.example.data.repo.PayrollRepository
 import com.example.domain.PayrollCalculator
-import com.example.data.model.Notification
 import com.example.screens.AttendanceContent
+import com.example.screens.CompanySettingsContent
 import com.example.screens.DashboardContent
 import com.example.screens.LoginContent
 import com.example.screens.NotificationsContent
 import com.example.screens.PayrollContent
 import com.example.screens.PayrollUiState
+import com.example.screens.WorkerDetailsContent
 import com.example.screens.WorkersContent
 import com.example.ui.MeterRow
 import com.example.ui.PillChip
@@ -312,7 +319,65 @@ class UiScreenshotTest {
     }
 
     @Test
-    fun designSystem() = shot("08-design-system") {
+    fun workerDetails() = shot("08-worker-details") {
+        val w = worker(1, "Suresh Patil", "MA001")
+        WorkerDetailsContent(
+            worker = w,
+            user = admin,
+            slip = payRow(1, "Suresh Patil", "MA001", 18720.0, "paid"),
+            assignments = listOf(
+                ProjectAssignment(
+                    id = 1, workerId = 1, projectId = 1, siteId = 1, taskId = 1,
+                    startDate = LocalDate.of(2026, 8, 1), status = "active",
+                ),
+            ),
+            modifications = emptyList(),
+            sites = listOf(Site(id = 1, name = "Andheri Tower B")),
+            projects = listOf(Project(id = 1, name = "Phase 2 Structure")),
+            tasks = listOf(WorkTask(id = 1, name = "Brickwork", category = "Masonry")),
+            recentAttendance = listOf(
+                record(1, AttendanceStatus.PRESENT, 8),
+                record(2, AttendanceStatus.LATE, 9, late = 24),
+                record(3, AttendanceStatus.PRESENT, 8),
+                record(4, AttendanceStatus.ABSENT, 0),
+            ),
+            recentTxns = listOf(
+                WorkerTransaction(1, 1, "advance", 3000.0, LocalDate.of(2026, 11, 2), "Festival advance"),
+                WorkerTransaction(2, 1, "bonus", 1200.0, LocalDate.of(2026, 11, 1), "Overtime bonus"),
+            ),
+            onBack = {},
+            onEdit = {},
+            onOpenReport = {},
+            onOpenIdCard = {},
+            onCall = {},
+            onMarkPresent = {},
+            onDialog = {},
+            onEndAssignment = {},
+        )
+    }
+
+    @Test
+    fun companySettings() = shot("09-company-settings") {
+        CompanySettingsContent(
+            company = CompanySetting(
+                name = "Shreeji Constructions",
+                address = "Plot 14, MIDC Industrial Area, Andheri East, Mumbai 400093",
+                phone = "022 2834 1200",
+                email = "accounts@shreeji.co.in",
+                website = "shreeji.co.in",
+                gstNumber = "27AABCS1429B1ZX",
+                registrationNumber = "U45200MH2011PTC214503",
+            ),
+            message = null,
+            embedded = false,
+            onBack = {},
+            onSave = {},
+            onDismissMessage = {},
+        )
+    }
+
+    @Test
+    fun designSystem() = shot("10-design-system") {
         Column(
             Modifier.fillMaxSize().background(Ink).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),

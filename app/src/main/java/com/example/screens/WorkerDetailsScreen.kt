@@ -69,9 +69,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AttendanceRecord
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.PayTypes
+import com.example.data.model.Project
+import com.example.data.model.ProjectAssignment
+import com.example.data.model.Site
 import com.example.data.model.TxnTypes
 import com.example.data.model.User
+import com.example.data.model.WorkTask
 import com.example.data.model.Worker
+import com.example.data.model.WorkerModification
 import com.example.data.model.WorkerTransaction
 import com.example.data.repo.AttendanceRepository
 import com.example.data.repo.PayrollRepository
@@ -153,10 +158,7 @@ fun SmartWorkerWorkerDetailsScreen(
 
     // assign | promote | leave | deactivate | payment | advance
     var dialog by remember { mutableStateOf<String?>(null) }
-    var showMore by remember { mutableStateOf(false) }
     var toast by remember { mutableStateOf<String?>(null) }
-
-    val dateFmt = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
     fun markPresentToday(w: Worker) {
         scope.launch {
@@ -176,6 +178,127 @@ fun SmartWorkerWorkerDetailsScreen(
             toast = err ?: "Saved. Payroll updates automatically."
         }
     }
+
+    WorkerDetailsContent(
+        worker = worker,
+        user = user,
+        slip = slip,
+        assignments = assignments,
+        modifications = modifications,
+        sites = sites,
+        projects = projects,
+        tasks = tasks,
+        recentAttendance = recentAttendance,
+        recentTxns = recentTxns,
+        onBack = onBack,
+        onEdit = onEdit,
+        onOpenReport = onOpenReport,
+        onOpenIdCard = onOpenIdCard,
+        onCall = { dial(context, it.phone) },
+        onMarkPresent = { markPresentToday(it) },
+        onDialog = { dialog = it },
+        onEndAssignment = { id -> adminVm.endAssignment(id) { msg -> toast = msg } },
+    )
+
+    worker?.let { w ->
+        // ── Dialogs ─────────────────────────────────────────────────────────
+        when (dialog) {
+            "payment" -> TxnQuickDialog(
+                title = "Add Payment",
+                hint = "An earning added to this worker's payroll.",
+                types = TxnTypes.EARNINGS,
+                onDismiss = { dialog = null },
+                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
+            )
+            "advance" -> TxnQuickDialog(
+                title = "Add Advance",
+                hint = "A deduction recovered from this worker's payroll.",
+                types = TxnTypes.DEDUCTIONS,
+                onDismiss = { dialog = null },
+                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
+            )
+            "assign" -> AssignDialog(
+                sites = sites.map { it.id to it.name },
+                projects = projects.map { it.id to it.name },
+                tasks = tasks.map { it.id to it.name },
+                onDismiss = { dialog = null },
+                onSave = { p, s, t, d, n ->
+                    adminVm.assign(p, s, t, d, n) { toast = it }
+                    dialog = null
+                },
+            )
+            "promote" -> PromoteDialog(
+                current = w,
+                onDismiss = { dialog = null },
+                onSave = { pos, rate, desc ->
+                    adminVm.promote(pos, rate, desc) { toast = it }
+                    dialog = null
+                },
+            )
+            "leave" -> LeaveAdjustDialog(
+                onDismiss = { dialog = null },
+                onSave = { days, reason ->
+                    adminVm.adjustLeave(days, reason) { toast = it }
+                    dialog = null
+                },
+            )
+            "deactivate" -> AlertDialog(
+                onDismissRequest = { dialog = null },
+                title = { Text(if (w.status == "active") "Deactivate ${w.fullName}?" else "Reactivate ${w.fullName}?") },
+                text = {
+                    Text(
+                        if (w.status == "active")
+                            "They will disappear from attendance and payroll. History is kept and they can be reactivated."
+                        else "They will appear again in attendance and payroll runs."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        adminVm.toggleActive { toast = it }
+                        dialog = null
+                    }) { Text("Confirm", color = if (w.status == "active") Danger else Success) }
+                },
+                dismissButton = { TextButton(onClick = { dialog = null }) { Text("Cancel") } },
+            )
+        }
+
+        toast?.let {
+            AlertDialog(
+                onDismissRequest = { toast = null },
+                confirmButton = { TextButton(onClick = { toast = null }) { Text("OK") } },
+                text = { Text(it) },
+            )
+        }
+    }
+}
+
+/**
+ * Worker Details presentation half — state in, callbacks out, so it renders
+ * from fixtures instead of a live database.
+ */
+@Composable
+internal fun WorkerDetailsContent(
+    worker: Worker?,
+    user: User,
+    slip: PayrollRepository.PayrollRow?,
+    assignments: List<ProjectAssignment>,
+    modifications: List<WorkerModification>,
+    sites: List<Site>,
+    projects: List<Project>,
+    tasks: List<WorkTask>,
+    recentAttendance: List<AttendanceRecord>,
+    recentTxns: List<WorkerTransaction>,
+    onBack: () -> Unit,
+    onEdit: (Long) -> Unit,
+    onOpenReport: (Long) -> Unit,
+    onOpenIdCard: (Long) -> Unit,
+    onCall: (Worker) -> Unit,
+    onMarkPresent: (Worker) -> Unit,
+    onDialog: (String) -> Unit,
+    onEndAssignment: (Long) -> Unit,
+) {
+    var showMore by remember { mutableStateOf(false) }
+    val dateFmt = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
     Scaffold(
         containerColor = Ink,
@@ -203,16 +326,16 @@ fun SmartWorkerWorkerDetailsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { ProfileHeader(w, onCall = { dial(context, w.phone) }) }
+            item { ProfileHeader(w, onCall = { onCall(w) }) }
 
             // Quick action grid (3 × 2) — admin only, per Flask worker_profile action bar.
             if (user.isAdmin) {
                 item {
                     Column {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            ActionTile("Mark\nAttendance", Icons.Filled.HowToReg, Success, Modifier.weight(1f)) { markPresentToday(w) }
-                            ActionTile("Add\nPayment", Icons.Filled.Payments, PrimaryBlue, Modifier.weight(1f)) { dialog = "payment" }
-                            ActionTile("Add\nAdvance", Icons.Filled.AccountBalanceWallet, Warning, Modifier.weight(1f)) { dialog = "advance" }
+                            ActionTile("Mark\nAttendance", Icons.Filled.HowToReg, Success, Modifier.weight(1f)) { onMarkPresent(w) }
+                            ActionTile("Add\nPayment", Icons.Filled.Payments, PrimaryBlue, Modifier.weight(1f)) { onDialog("payment") }
+                            ActionTile("Add\nAdvance", Icons.Filled.AccountBalanceWallet, Warning, Modifier.weight(1f)) { onDialog("advance") }
                         }
                         Spacer(Modifier.height(8.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -223,9 +346,9 @@ fun SmartWorkerWorkerDetailsScreen(
                         if (showMore) {
                             Spacer(Modifier.height(8.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                ActionTile("Assign\nProject", Icons.AutoMirrored.Filled.Assignment, Purple, Modifier.weight(1f)) { dialog = "assign" }
-                                ActionTile("Promote /\nRate", Icons.AutoMirrored.Filled.TrendingUp, Success, Modifier.weight(1f)) { dialog = "promote" }
-                                ActionTile("Adjust\nLeave", Icons.Filled.EventAvailable, Warning, Modifier.weight(1f)) { dialog = "leave" }
+                                ActionTile("Assign\nProject", Icons.AutoMirrored.Filled.Assignment, Purple, Modifier.weight(1f)) { onDialog("assign") }
+                                ActionTile("Promote /\nRate", Icons.AutoMirrored.Filled.TrendingUp, Success, Modifier.weight(1f)) { onDialog("promote") }
+                                ActionTile("Adjust\nLeave", Icons.Filled.EventAvailable, Warning, Modifier.weight(1f)) { onDialog("leave") }
                             }
                             Spacer(Modifier.height(8.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -233,7 +356,7 @@ fun SmartWorkerWorkerDetailsScreen(
                                 ActionTile(
                                     if (w.status == "active") "Deactivate" else "Reactivate",
                                     Icons.Filled.PersonOff, Danger, Modifier.weight(1f),
-                                ) { dialog = "deactivate" }
+                                ) { onDialog("deactivate") }
                                 Spacer(Modifier.weight(1f))
                             }
                         }
@@ -311,7 +434,7 @@ fun SmartWorkerWorkerDetailsScreen(
                                         "End",
                                         fontSize = 12.sp, color = Danger, fontWeight = FontWeight.SemiBold,
                                         modifier = Modifier
-                                            .clickable { adminVm.endAssignment(a.id) { toast = it } }
+                                            .clickable { onEndAssignment(a.id) }
                                             .padding(6.dp),
                                     )
                                 }
@@ -378,75 +501,6 @@ fun SmartWorkerWorkerDetailsScreen(
                 }
             }
             item { Spacer(Modifier.height(24.dp)) }
-        }
-
-        // ── Dialogs ─────────────────────────────────────────────────────────
-        when (dialog) {
-            "payment" -> TxnQuickDialog(
-                title = "Add Payment",
-                hint = "An earning added to this worker's payroll.",
-                types = TxnTypes.EARNINGS,
-                onDismiss = { dialog = null },
-                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
-            )
-            "advance" -> TxnQuickDialog(
-                title = "Add Advance",
-                hint = "A deduction recovered from this worker's payroll.",
-                types = TxnTypes.DEDUCTIONS,
-                onDismiss = { dialog = null },
-                onSave = { type, amt, desc -> saveTxn(w, type, amt, desc); dialog = null },
-            )
-            "assign" -> AssignDialog(
-                sites = sites.map { it.id to it.name },
-                projects = projects.map { it.id to it.name },
-                tasks = tasks.map { it.id to it.name },
-                onDismiss = { dialog = null },
-                onSave = { p, s, t, d, n ->
-                    adminVm.assign(p, s, t, d, n) { toast = it }
-                    dialog = null
-                },
-            )
-            "promote" -> PromoteDialog(
-                current = w,
-                onDismiss = { dialog = null },
-                onSave = { pos, rate, desc ->
-                    adminVm.promote(pos, rate, desc) { toast = it }
-                    dialog = null
-                },
-            )
-            "leave" -> LeaveAdjustDialog(
-                onDismiss = { dialog = null },
-                onSave = { days, reason ->
-                    adminVm.adjustLeave(days, reason) { toast = it }
-                    dialog = null
-                },
-            )
-            "deactivate" -> AlertDialog(
-                onDismissRequest = { dialog = null },
-                title = { Text(if (w.status == "active") "Deactivate ${w.fullName}?" else "Reactivate ${w.fullName}?") },
-                text = {
-                    Text(
-                        if (w.status == "active")
-                            "They will disappear from attendance and payroll. History is kept and they can be reactivated."
-                        else "They will appear again in attendance and payroll runs."
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        adminVm.toggleActive { toast = it }
-                        dialog = null
-                    }) { Text("Confirm", color = if (w.status == "active") Danger else Success) }
-                },
-                dismissButton = { TextButton(onClick = { dialog = null }) { Text("Cancel") } },
-            )
-        }
-
-        toast?.let {
-            AlertDialog(
-                onDismissRequest = { toast = null },
-                confirmButton = { TextButton(onClick = { toast = null }) { Text("OK") } },
-                text = { Text(it) },
-            )
         }
     }
 }
