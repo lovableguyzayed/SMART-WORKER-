@@ -1,5 +1,6 @@
 package com.example.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,29 +40,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.CardBorder
 import com.example.ui.LocalAppContainer
+import com.example.ui.SwCard
 import com.example.ui.SwTopBar
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.CardBackground
+import com.example.ui.theme.Ink
 import com.example.ui.theme.Navy
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.Purple
 import com.example.ui.theme.Success
+import com.example.ui.theme.SwType
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.Warning
 import com.example.util.CsvExporter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Reports & Export hub (Flask /export_data + /payroll/export.csv + worker
@@ -88,7 +97,7 @@ fun ReportsScreen(onBack: () -> Unit, onOpenWorkerReport: (Long) -> Unit) {
     }
 
     Scaffold(
-        containerColor = BackgroundColor,
+        containerColor = Ink,
         topBar = {
             SwTopBar(
                 title = "Reports & Export",
@@ -201,27 +210,27 @@ fun ReportsScreen(onBack: () -> Unit, onOpenWorkerReport: (Long) -> Unit) {
 
 @Composable
 private fun ReportRow(title: String, subtitle: String, icon: ImageVector, tint: Color, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
+    SwCard(Modifier.fillMaxWidth(), onClick = onClick) {
         Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(40.dp).clickable(onClick = onClick),
+                Modifier.size(40.dp).clip(RoundedCornerShape(13.dp))
+                    .background(tint.copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+                Icon(icon, null, tint = tint, modifier = Modifier.size(19.dp))
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Navy)
-                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+                Text(
+                    title, style = SwType.Title.copy(fontSize = 14.5.sp), color = OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    subtitle, style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
-            Icon(Icons.Filled.Description, "Export", tint = TextSecondary, modifier = Modifier.size(18.dp))
+            Icon(Icons.Filled.Description, "Export", tint = OnDarkFaint, modifier = Modifier.size(18.dp))
         }
     }
 }

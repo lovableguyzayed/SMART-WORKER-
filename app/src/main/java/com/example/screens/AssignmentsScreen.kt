@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,19 +44,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.CardBorder
+import com.example.ui.SwCard
 import com.example.ui.SwDateField
 import com.example.ui.SwFormDropdown
 import com.example.ui.SwFormField
 import com.example.ui.SwTopBar
 import com.example.ui.collectAsStateLifecycle
+import com.example.ui.contentColorsFor
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.CardBackground
-import com.example.ui.theme.DarkBlue
 import com.example.ui.theme.Danger
+import com.example.ui.theme.DarkBlue
 import com.example.ui.theme.DividerColor
+import com.example.ui.theme.Ink
 import com.example.ui.theme.Navy
+import com.example.ui.theme.OnDark
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.Success
+import com.example.ui.theme.SwType
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.White
 import com.example.ui.vm.AssignmentsViewModel
@@ -88,7 +94,7 @@ fun AssignmentsScreen(vm: AssignmentsViewModel, onBack: () -> Unit) {
     val dateFmt = remember { DateTimeFormatter.ofPattern("dd MMM yyyy") }
 
     Scaffold(
-        containerColor = BackgroundColor,
+        containerColor = Ink,
         topBar = {
             SwTopBar(
                 title = "Assignments",
@@ -223,16 +229,11 @@ fun AssignmentsScreen(vm: AssignmentsViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun CountTile(label: String, value: Int, tint: androidx.compose.ui.graphics.Color, modifier: Modifier = Modifier) {
-    Card(
-        modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Text(value.toString(), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = tint)
-            Text(label, fontSize = 11.5.sp, color = TextSecondary)
+    SwCard(modifier, container = tint) {
+        Column(Modifier.fillMaxWidth().padding(15.dp)) {
+            Text(label.uppercase(), style = SwType.Label, color = contentColorsFor(tint).second)
+            Spacer(Modifier.height(5.dp))
+            Text(value.toString(), style = SwType.StatSmall, color = contentColorsFor(tint).first)
         }
     }
 }
@@ -245,31 +246,26 @@ private fun AssignmentRow(
     onEnd: () -> Unit,
 ) {
     val a = row.assignment
-    Card(
-        Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.padding(14.dp)) {
+    val accent = accentFor(row.worker.workerCode.ifBlank { row.worker.fullName })
+    SwCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    Modifier.size(42.dp).clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PrimaryBlue, DarkBlue))),
+                    Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(accent),
                     contentAlignment = Alignment.Center,
                 ) {
-                    LocalImage(row.worker.profileImage, null, Modifier.size(42.dp).clip(CircleShape)) {
+                    LocalImage(row.worker.profileImage, null, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))) {
                         Text(
                             row.worker.fullName.take(1).uppercase(Locale.US),
-                            color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold,
+                            color = contentColorsFor(accent).first,
+                            fontSize = 17.sp, fontWeight = FontWeight.Bold,
                         )
                     }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        row.worker.fullName, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold, color = Navy,
+                        row.worker.fullName, style = SwType.Title.copy(fontSize = 14.5.sp), color = OnDark,
                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                     )
                     Text(

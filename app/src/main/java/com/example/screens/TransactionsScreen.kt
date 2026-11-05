@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.TxnTypes
@@ -52,14 +53,24 @@ import com.example.data.model.WorkerTransaction
 import com.example.ui.CardBorder
 import com.example.ui.EmptyState
 import com.example.ui.StatusPill
+import com.example.ui.SwCard
 import com.example.ui.collectAsStateLifecycle
+import com.example.ui.contentColorsFor
 import com.example.ui.theme.BackgroundColor
 import com.example.ui.theme.CardBackground
+import com.example.ui.theme.Coral
 import com.example.ui.theme.Danger
 import com.example.ui.theme.DividerColor
+import com.example.ui.theme.Flame
+import com.example.ui.theme.Ink
+import com.example.ui.theme.Lime
 import com.example.ui.theme.Navy
+import com.example.ui.theme.OnDark
+import com.example.ui.theme.OnDarkFaint
+import com.example.ui.theme.OnDarkMuted
 import com.example.ui.theme.PrimaryBlue
 import com.example.ui.theme.Success
+import com.example.ui.theme.SwType
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.White
 import com.example.ui.vm.TransactionsViewModel
@@ -78,7 +89,7 @@ fun TransactionsScreen(vm: TransactionsViewModel, onBack: () -> Unit) {
     val dateFmt = DateTimeFormatter.ofPattern("dd MMM")
 
     Scaffold(
-        containerColor = BackgroundColor,
+        containerColor = Ink,
         topBar = {
             com.example.ui.SwTopBar(
                 title = "Transactions",
@@ -92,7 +103,7 @@ fun TransactionsScreen(vm: TransactionsViewModel, onBack: () -> Unit) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAdd = true }, containerColor = PrimaryBlue, contentColor = White) {
+            FloatingActionButton(onClick = { showAdd = true }, containerColor = Flame, contentColor = White) {
                 Icon(Icons.Filled.Add, "Add transaction")
             }
         },
@@ -157,29 +168,42 @@ fun TransactionsScreen(vm: TransactionsViewModel, onBack: () -> Unit) {
 @Composable
 private fun TxnRow(txn: WorkerTransaction, name: String, dateFmt: DateTimeFormatter, onToggle: () -> Unit) {
     val earning = txn.isEarning
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Navy)
+    val accent = if (earning) Lime else Coral
+    val cancelled = txn.status != "active"
+    SwCard(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(end = 13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier.width(5.dp).height(62.dp)
+                    .background(if (cancelled) OnDarkFaint else accent),
+            )
+            Spacer(Modifier.width(13.dp))
+            Column(Modifier.weight(1f).padding(vertical = 12.dp)) {
                 Text(
-                    "${TxnTypes.LABELS[txn.txnType] ?: txn.txnType} • ${txn.date.format(dateFmt)}",
-                    fontSize = 12.sp, color = TextSecondary,
+                    name, style = SwType.Title.copy(fontSize = 14.5.sp),
+                    color = if (cancelled) OnDarkMuted else OnDark,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    "${TxnTypes.LABELS[txn.txnType] ?: txn.txnType}  ·  ${txn.date.format(dateFmt)}",
+                    style = SwType.Caption, color = OnDarkMuted,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "${if (earning) "+" else "-"}₹${"%,.0f".format(txn.amount)}",
-                    fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (earning) Success else Danger,
+                    "${if (earning) "+" else "\u2212"}\u20B9${"%,.0f".format(txn.amount)}",
+                    style = SwType.Title.copy(fontSize = 15.sp),
+                    color = if (cancelled) OnDarkFaint else accent,
                 )
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(5.dp))
                 Box(Modifier.clickable(onClick = onToggle)) {
-                    StatusPill(if (txn.status == "active") "Active" else "Cancelled", if (txn.status == "active") Success else TextSecondary)
+                    StatusPill(
+                        if (cancelled) "Cancelled" else "Active",
+                        if (cancelled) OnDarkFaint else Lime,
+                    )
                 }
             }
         }
@@ -259,16 +283,15 @@ private fun TotalTile(
     tint: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        elevation = CardDefaults.cardElevation(0.dp),
-        border = CardBorder,
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp)) {
-            Text("₹${"%,.2f".format(amount)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = tint)
-            Text(label, fontSize = 11.sp, color = TextSecondary, maxLines = 1)
+    SwCard(modifier, container = tint) {
+        Column(Modifier.fillMaxWidth().padding(15.dp)) {
+            Text(label.uppercase(), style = SwType.Label, color = contentColorsFor(tint).second)
+            Spacer(Modifier.height(5.dp))
+            Text(
+                "\u20B9${"%,.0f".format(amount)}",
+                style = SwType.StatSmall, color = contentColorsFor(tint).first,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
