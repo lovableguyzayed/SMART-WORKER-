@@ -36,8 +36,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -91,15 +92,24 @@ internal fun LoginContent(
     }
 
     Box(Modifier.fillMaxSize().background(Ink).imePadding()) {
-        // Two blurred colour fields instead of a gradient sheet: the canvas
-        // stays near-black so the card and the accent still read as the system's.
+        // Two soft colour fields instead of a gradient sheet, so the canvas
+        // stays near-black and the card and accent still read as the system's.
+        //
+        // These are radial gradients rather than Modifier.blur: blur clips to
+        // its own rectangular bounds by default, and is a no-op below API 31
+        // while this app ships to API 26 — either way it renders as a hard
+        // -edged block. A gradient falls off smoothly on every version.
         Box(
-            Modifier.offset(x = (-70).dp, y = (-40).dp).size(260.dp)
-                .blur(90.dp).clip(CircleShape).background(Flame.copy(alpha = 0.30f)),
+            Modifier.offset(x = (-90).dp, y = (-70).dp).size(340.dp)
+                .background(
+                    Brush.radialGradient(listOf(Flame.copy(alpha = 0.34f), Color.Transparent)),
+                ),
         )
         Box(
-            Modifier.align(Alignment.BottomEnd).offset(x = 70.dp, y = 60.dp).size(240.dp)
-                .blur(90.dp).clip(CircleShape).background(Volt.copy(alpha = 0.28f)),
+            Modifier.align(Alignment.BottomEnd).offset(x = 90.dp, y = 90.dp).size(320.dp)
+                .background(
+                    Brush.radialGradient(listOf(Volt.copy(alpha = 0.30f), Color.Transparent)),
+                ),
         )
 
         Column(

@@ -97,4 +97,12 @@ jobs:
             --notes "Compose screens rendered by Roborazzi. Updated automatically on each redesign push." \
             --prerelease \
             --target "$GITHUB_SHA" || true
+          # Renaming or renumbering a test leaves its old asset behind, so the
+          # release accumulates stale images that no longer match any screen.
+          # Drop everything already there, then upload this run's set.
+          gh release view ui-screenshots --json assets \
+            --jq '.assets[].name' 2>/dev/null \
+            | while read -r stale; do
+                [ -n "$stale" ] && gh release delete-asset ui-screenshots "$stale" --yes || true
+              done
           gh release upload ui-screenshots "${files[@]}" --clobber
